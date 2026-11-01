@@ -1,0 +1,121 @@
+# Local infrastructure for FABLE.
+# PgBouncer pools connections to the one Postgres database. It is not a second database.
+# API and worker use DATABASE_URL through PgBouncer.
+# Migrations use DIRECT_DATABASE_URL straight to Postgres.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: fable
+      POSTGRES_PASSWORD: fable
+      POSTGRES_DB: fable
+    ports:
+      - '54329:5432'
+    volumes:
+      - fable_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U fable -d fable']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.26.1-p0
+    environment:
+      DATABASE_URL: postgres://fable:fable@postgres:5432/fable
+      POOL_MODE: transaction
+      AUTH_TYPE: plain
+      MAX_PREPARED_STATEMENTS: '100'
+      DEFAULT_POOL_SIZE: '20'
+      MAX_CLIENT_CONN: '200'
+      SERVER_RESET_QUERY: DISCARD ALL
+    ports:
+      - '6432:5432'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -p 5432 -U fable -d fable']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    command: ['redis-server', '--save', '', '--appendonly', 'no']
+    ports:
+      - '63799:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: production
+      FABLE_ENV: dev
+      PORT: '4307'
+      DATABASE_URL: postgresql://fable:fable@pgbouncer:5432/fable?schema=public
+      DIRECT_DATABASE_URL: postgresql://fable:fable@postgres:5432/fable?schema=public
+      REDIS_URL: redis://redis:6379
+      WEB_ORIGIN: http://127.0.0.1:3847,http://localhost:3847
+      LOG_LEVEL: info
+      OTEL_ENABLED: 'false'
+    ports:
+      - '4307:4307'
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:4307/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    environment:
+      NODE_ENV: production
+      FABLE_ENV: dev
+      DATABASE_URL: postgresql://fable:fable@pgbouncer:5432/fable?schema=public
+      REDIS_URL: redis://redis:6379
+      LOG_LEVEL: info
+      OTEL_ENABLED: 'false'
+    depends_on:
+      redis:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: '3847'
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:4307
+    ports:
+      - '3847:3847'
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  fable_postgres:

@@ -1,0 +1,20 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+catalog:
+  typescript: '6.0.3'
+
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver
+
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - '@swc/core'
+  - esbuild
+  - prisma
+  - msgpackr-extract
+  - sharp
+  - unrs-resolver

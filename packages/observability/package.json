@@ -1,0 +1,30 @@
+{
+  "name": "@fable/observability",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Structured logs, optional OpenTelemetry, optional Sentry, and Prometheus metrics.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "VITE_CONFIG_NATIVE_IGNORE_WARNING=true vitest run"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "1.10.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.300.0",
+    "@opentelemetry/sdk-node": "0.300.0",
+    "@sentry/node": "11.10.0",
+    "dotenv": "18.0.9",
+    "pino": "10.4.0",
+    "@prometheus-io/client": "0.16.1"
+  },
+  "devDependencies": {
+    "@fable/config": "workspace:*",
+    "@types/node": "22.20.5",
+    "eslint": "9.39.5",
+    "typescript": "catalog:",
+    "vitest": "5.0.5"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "name": "fable",
+  "private": true,
+  "version": "0.1.0",
+  "description": "FABLE platform foundation. Simulated casino and sportsbook modular monolith. No real-money transactions.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "packageManager": "pnpm@10.33.4",
+  "scripts": {
+    "build:packages": "pnpm --filter @fable/domain --filter @fable/observability --filter @fable/database build",
+    "build": "pnpm run build:packages && pnpm --filter @fable/api --filter @fable/worker --filter @fable/web build",
+    "dev": "pnpm run build:packages && concurrently -n api,worker,web -c cyan,magenta,green \"pnpm --filter @fable/api dev\" \"pnpm --filter @fable/worker dev\" \"pnpm --filter @fable/web dev\"",
+    "lint": "pnpm -r --if-present run lint && prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "pnpm run build:packages && pnpm -r --if-present run typecheck",
+    "test": "pnpm -r --if-present run test",
+    "test:e2e": "pnpm --filter @fable/web test:e2e",
+    "db:generate": "pnpm --filter @fable/database generate",
+    "db:migrate": "pnpm --filter @fable/database migrate",
+    "health": "node scripts/health.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "10.0.6",
+    "prettier": "3.9.10",
+    "typescript": "catalog:"
+  },
+  "pnpm": {
+    "overrides": {
+      "eslint": "9.39.5",
+      "typescript": "6.0.3"
+    },
+    "peerDependencyRules": {
+      "ignoreMissing": [
+        "better-sqlite3",
+        "pg",
+        "redis",
+        "bullmq-otel"
+      ]
+    }
+  }
+}

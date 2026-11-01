@@ -1,0 +1,113 @@
+// FABLE ledger schema.
+// There is no mutable balance column. Balances are derived from ledger_entries.
+// Append-only rules are enforced again in SQL (see the init migration).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum LedgerAccountType {
+  USER_WALLET
+  HOUSE
+  PROVIDER_CLEARING
+  SYSTEM
+
+  @@map("ledger_account_type")
+}
+
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+
+  @@map("ledger_direction")
+}
+
+/// Player directory row. password_hash is a scrypt string, never a raw password.
+/// There is still no payment profile and no real-money flag.
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique
+  displayName  String    @map("display_name")
+  passwordHash String    @map("password_hash")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  sessions     Session[]
+
+  @@map("users")
+}
+
+/// Server-side session. The cookie stores this id. The token is not a JWT in localStorage.
+model Session {
+  id        String   @id
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  csrfToken String   @map("csrf_token")
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+/// Named account. Balance is not stored here.
+model LedgerAccount {
+  id        String            @id @db.Uuid
+  code      String            @unique
+  type      LedgerAccountType
+  currency  String            @db.Char(3)
+  userId    String?           @map("user_id") @db.Uuid
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  entries   LedgerEntry[]
+
+  @@index([userId])
+  @@map("ledger_accounts")
+}
+
+/// One balanced journal. Idempotency key is unique. simulated is locked true in SQL.
+model LedgerTransaction {
+  id             String        @id @db.Uuid
+  idempotencyKey String        @unique @map("idempotency_key")
+  kind           String
+  actorId        String?       @map("actor_id")
+  simulated      Boolean       @default(true)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  entries        LedgerEntry[]
+
+  @@map("ledger_transactions")
+}
+
+/// Immutable double-entry line. No updatedAt. Updates and deletes are rejected by trigger.
+model LedgerEntry {
+  id            String            @id @db.Uuid
+  transactionId String            @map("transaction_id") @db.Uuid
+  transaction   LedgerTransaction @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  accountId     String            @map("account_id") @db.Uuid
+  account       LedgerAccount     @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  direction     LedgerDirection
+  amountMinor   BigInt            @map("amount_minor")
+  currency      String            @db.Char(3)
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([accountId, createdAt])
+  @@index([transactionId])
+  @@map("ledger_entries")
+}
+
+/// Append-only audit trail. Updates and deletes are rejected by trigger.
+model AuditLog {
+  id         String   @id @db.Uuid
+  actorId    String?  @map("actor_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([entityType, entityId])
+  @@map("audit_log")
+}
