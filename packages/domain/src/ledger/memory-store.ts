@@ -11,6 +11,9 @@ export interface LedgerStore {
    * journal and does not write a second audit record.
    */
   postAtomic(journal: ValidatedJournal): Promise<PostedJournal>;
+
+  /** Read committed journals. Balances are derived from these lines. Nothing here updates one. */
+  listPosted(): Promise<readonly PostedJournal[]>;
 }
 
 export class InMemoryLedgerStore implements LedgerStore {
@@ -42,6 +45,7 @@ export class InMemoryLedgerStore implements LedgerStore {
       simulated: true,
       actorId: journal.actorId,
       lines: journal.lines.map((line) => ({ ...line })),
+      postedAt: new Date().toISOString(),
     };
     this.byKey.set(posted.idempotencyKey, posted);
     try {
@@ -63,5 +67,9 @@ export class InMemoryLedgerStore implements LedgerStore {
       throw error;
     }
     return posted;
+  }
+
+  async listPosted(): Promise<readonly PostedJournal[]> {
+    return [...this.byKey.values()].sort((a, b) => a.postedAt.localeCompare(b.postedAt));
   }
 }

@@ -1,6 +1,6 @@
 # FABLE
 
-FABLE is a premium casino and sportsbook platform. This repository is the foundation only: a modular monolith, a simulated ledger, and the local toolchain. It does not take bets, run games, or move real money.
+FABLE is a premium casino and sportsbook platform. This repository is the player application on the modular monolith: simulated ledger, demo casino previews, demo sports fixtures, and a demo bet slip. It does not launch games, take live prices, or move real money.
 
 ## Prerequisites
 
@@ -22,7 +22,9 @@ pnpm dev
 | OpenAPI      | http://127.0.0.1:4307/docs    |
 | Metrics      | http://127.0.0.1:4307/metrics |
 
-`pnpm dev` builds the shared packages, then starts the API, the worker, and the web app. Without `REDIS_URL` the worker stays idle. Without `DATABASE_URL` the API keeps the ledger in memory. Both are valid for this foundation.
+`pnpm dev` builds the shared packages, then starts the API, the worker, and the web app. Without `REDIS_URL` the worker stays idle. Without `DATABASE_URL` the API keeps the ledger and the player directory in memory. Both are valid locally. Sessions, favorites, and the bet book are then lost on restart. Journals are durable only when Postgres is configured and migrations have been applied.
+
+Sign in from the web app. The browser talks to the API through `/backend` on port 3847. Demo balances are labeled Fable demo units and are not withdrawable.
 
 ```bash
 pnpm health
@@ -66,3 +68,4 @@ PgBouncer (host port 6432) pools connections to that same Postgres. It is not a 
 - [Local development](docs/local-development.md)
 - [Health checks](docs/health-checks.md)
 - [CI](docs/ci.md)
+- [Phase 2 report](docs/phase-2-implementation-report.md)

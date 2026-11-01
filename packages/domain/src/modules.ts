@@ -6,7 +6,7 @@
 export const moduleBoundaries = [
   {
     name: 'identity',
-    role: 'User directory stub. No authentication product and no credentials store.',
+    role: 'Player directory. Password hashes only, never a raw password. Does not change balances.',
     authoritativeForBalances: false,
     mutatesBalances: false,
   },
@@ -24,7 +24,7 @@ export const moduleBoundaries = [
   },
   {
     name: 'sportsbook',
-    role: 'Submits simulated settlement journals to the ledger. It does not change balances itself.',
+    role: 'Submits simulated reservation and settlement journals to the ledger. It does not change balances itself.',
     authoritativeForBalances: false,
     mutatesBalances: false,
   },

@@ -12,4 +12,9 @@ export class Ledger {
   async post(draft: JournalDraft): Promise<PostedJournal> {
     return this.store.postAtomic(validateJournal(draft));
   }
+
+  /** Committed journals, oldest first. Callers derive balances. They do not write them back. */
+  list(): Promise<readonly PostedJournal[]> {
+    return this.store.listPosted();
+  }
 }

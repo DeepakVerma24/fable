@@ -7,6 +7,7 @@ import { APP_ENV, loadEnv } from './config/env';
 import { FoundationExceptionFilter } from './http/exception.filter';
 import { HealthController } from './health/health.controller';
 import { LedgerModule } from './ledger/ledger.module';
+import { PlayerModule } from './player/player.module';
 import { PlatformGateway } from './platform/platform.gateway';
 
 @Module({
@@ -26,6 +27,7 @@ import { PlatformGateway } from './platform/platform.gateway';
       },
     }),
     LedgerModule,
+    PlayerModule,
   ],
   controllers: [HealthController],
   providers: [

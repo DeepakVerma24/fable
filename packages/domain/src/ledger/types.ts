@@ -45,6 +45,8 @@ export interface PostedJournal {
   simulated: true;
   lines: readonly JournalLine[];
   actorId: string | null;
+  /** ISO-8601 time the journal was committed. Not a balance. */
+  postedAt: string;
 }
 
 export class LedgerError extends Error {

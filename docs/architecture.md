@@ -19,7 +19,7 @@ flowchart LR
 
 | Module     | Owns                                    | Balance changes                  |
 | ---------- | --------------------------------------- | -------------------------------- |
-| identity   | User directory stub                     | No                               |
+| identity   | Player directory and sessions           | No                               |
 | ledger     | Journals, derived balances, idempotency | Yes, and only simulated journals |
 | casino     | Requests a simulated settlement         | No                               |
 | sportsbook | Requests a simulated settlement         | No                               |
@@ -31,13 +31,15 @@ Workers are a separate OS process so a queue stall does not take down HTTP. The 
 
 ## Processes
 
-- `apps/web` renders the foundation shell and talks to the API over HTTP.
-- `apps/api` is NestJS on Fastify: health, metrics, OpenAPI, a Socket.IO ping gateway, and the ledger wiring.
+- `apps/web` is the player application: discovery, casino previews, the sportsbook, demo slip, auth, and the simulated wallet. The browser calls the API through a same-origin `/backend` rewrite so session cookies stay on the web origin. A missing `fable_session` cookie redirects wallet, transactions, profile, settings, and favorites to login.
+- `apps/api` is NestJS on Fastify: health, metrics, OpenAPI, a Socket.IO ping gateway, the ledger wiring, and the player routes (auth, catalog, sports fixtures, demo bets, wallet reads, promotions, favorites).
 - `apps/worker` is a thin Node process using BullMQ. It is not a second Nest application, so it cannot accidentally share the API's HTTP server.
 - `packages/domain` is pure TypeScript. Persistence lives in `packages/database`.
 - `packages/observability` is logging, optional tracing, optional Sentry, and the Prometheus registry.
 
-When `DATABASE_URL` is unset, the API uses an in-memory ledger that still posts the journal and the audit record together or rolls both back. When the URL is set, `PrismaLedgerStore` does the same inside one Postgres transaction.
+When `DATABASE_URL` is unset, the API uses an in-memory ledger and an in-memory player directory. Journals and sessions disappear when the process restarts. When the URL is set, `PrismaLedgerStore` commits each journal and its audit row in one Postgres transaction, and `PrismaPlayerStore` keeps users and sessions in Postgres. Favorites and the demo bet book stay in process memory either way. The financial record of a bet is the journal list, not that book.
+
+Demo bets do not add a journal kind. `DemoSportsbook` asks the sportsbook boundary for two simulated sportsbook journals: available wallet to hold, then hold to the wallet and the house. `DemoWallet` posts the opening grant through `Ledger.post` with `simulated: true`. Controllers do not write lines. See [financial safety](financial-safety.md).
 
 ## When more infrastructure would be justified
 

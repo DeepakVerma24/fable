@@ -33,12 +33,29 @@ The in-memory store serializes commits. It writes the journal and the audit even
 
 Those statements live in SQL because Prisma's schema cannot express triggers. Do not regenerate the init migration in a way that drops them.
 
-`loadEnv` returns `realMoney: false` even if the process environment contains `REAL_MONEY=true`. The web health panel shows the same flag from `GET /health`.
+`loadEnv` returns `realMoney: false` even if the process environment contains `REAL_MONEY=true`. `GET /health` returns the same flag.
 
 ## Simulated balances and mock providers
 
 Local and CI runs may omit Postgres. The in-memory store is still double-entry and still simulated. `MockGameProvider` returns a round id and `simulated: true`. It does not call a remote casino or sportsbook.
 
 Account codes are namespaced (`wallet.`, `house.`, `provider.`, otherwise system). The Postgres store upserts those accounts inside the ledger transaction. Casino does not insert account rows.
+
+## Demo units
+
+The player wallet uses currency `FBU` (Fable demo units). A new directory entry receives one grant of `100000` minor units (1,000.00 FBU) from `house.demo` to `wallet.{userId}`. The idempotency key is `demo-grant-{userId}`, so login can call grant again without a second credit. The wallet response sets `withdrawable` and `realMoney` to false. The UI says the units cannot be withdrawn, deposited, or converted.
+
+A demo bet is two journals, both `SIMULATED_SPORTSBOOK_SETTLEMENT` and `simulated: true`:
+
+1. Reserve: debit the available wallet, credit `wallet.{userId}.hold` for the stake. Available falls and reserved rises. Net liability does not change.
+2. Settle immediately in the same request. A win debits the hold and `house.sportsbook` and credits the available wallet for the full payout. A loss debits the hold and credits the house for the stake.
+
+After that request, reserved is back to zero. The summary still derives reserved from the hold account. There is no open-bet balance left on the screen.
+
+Stake is 100 to 50,000 minor units. Odds are two-decimal strings from 1.01 to 100.00. The server ignores the price the browser sent and quotes the fixture. Payout is `(stake * oddsScaled + 50) / 100`, half up. Win or loss is the parity of the selection id's character codes. That rule is written on the slip. It is not a sports result.
+
+Client idempotency keys are 8 to 80 safe characters. The journals are `bet-rsv-{key}` and `bet-stl-{key}`. A per-user lock checks the derived available balance before posting, so two concurrent slips cannot overdraw. Replaying a key returns the stored bet and does not post again.
+
+The API composition root is the only caller of `DemoWallet` and `DemoSportsbook`. Casino tiles are `playable: false`. Nothing in the web app assigns a balance.
 
 Audit metadata is scalars only: strings, numbers, booleans, and null. Do not put tokens, passwords, or payment instruments in it.

@@ -13,12 +13,12 @@ export async function configureHttp(app: NestFastifyApplication): Promise<void> 
       .split(',')
       .map((origin) => origin.trim())
       .filter(Boolean),
-    credentials: false,
+    credentials: true,
   });
   const config = new DocumentBuilder()
     .setTitle('FABLE API')
     .setDescription(
-      'Foundation API for the FABLE modular monolith. Simulated funds only. No wagering.',
+      'FABLE player API. Demo catalog, simulated wallet, and demo bets. No real-money wagering.',
     )
     .setVersion('0.1.0')
     .addTag('health')

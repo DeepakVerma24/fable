@@ -8,12 +8,20 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:3847',
     trace: 'on-first-retry',
   },
-  webServer: {
-    command: 'pnpm dev',
-    url: 'http://127.0.0.1:3847',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: 'pnpm --dir ../.. --filter @fable/api dev',
+      url: 'http://127.0.0.1:4307/health',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {
+      command: 'pnpm dev',
+      url: 'http://127.0.0.1:3847',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+  ],
   projects: [
     {
       name: 'chromium',

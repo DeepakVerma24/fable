@@ -27,14 +27,31 @@ enum LedgerDirection {
   @@map("ledger_direction")
 }
 
-/// Identity stub. No password, no session, no payment profile.
+/// Player directory row. password_hash is a scrypt string, never a raw password.
+/// There is still no payment profile and no real-money flag.
 model User {
-  id        String   @id @default(uuid()) @db.Uuid
-  email     String   @unique
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique
+  displayName  String    @map("display_name")
+  passwordHash String    @map("password_hash")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  sessions     Session[]
 
   @@map("users")
+}
+
+/// Server-side session. The cookie stores this id. The token is not a JWT in localStorage.
+model Session {
+  id        String   @id
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  csrfToken String   @map("csrf_token")
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@map("sessions")
 }
 
 /// Named account. Balance is not stored here.

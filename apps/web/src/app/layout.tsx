@@ -1,18 +1,13 @@
 import type { Metadata } from 'next';
-import { Fraunces, Geist_Mono, Outfit } from 'next/font/google';
+import { Geist, Geist_Mono } from 'next/font/google';
 
 import { Providers } from '@/components/providers';
 
 import './globals.css';
 
-const sans = Outfit({
+const sans = Geist({
   subsets: ['latin'],
-  variable: '--font-outfit',
-});
-
-const display = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-fraunces',
+  variable: '--font-geist',
 });
 
 const mono = Geist_Mono({
@@ -21,17 +16,17 @@ const mono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'FABLE foundation',
+  title: {
+    default: 'FABLE',
+    template: '%s · FABLE',
+  },
   description:
-    'Simulated platform foundation for the FABLE modular monolith. No real-money transactions.',
+    'FABLE player lobby. Casino previews and sportsbook fixtures use simulated Fable demo units. No real-money wagering.',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html
-      lang="en"
-      className={`${sans.variable} ${display.variable} ${mono.variable} dark h-full antialiased`}
-    >
+    <html lang="en" className={`${sans.variable} ${mono.variable} dark h-full antialiased`}>
       <body className="min-h-full bg-background text-foreground">
         <Providers>{children}</Providers>
       </body>

@@ -20,13 +20,15 @@ pnpm dev
 - Worker: `tsx watch`. Idle, and still running, when `REDIS_URL` is missing.
 - Web: Next.js on port 3847.
 
-Open http://127.0.0.1:3847. The page reads `/health` and `/modules`. If the API is down, the page shows that error and still renders the simulated-money banner.
+Open http://127.0.0.1:3847. The player app loads casino previews and sports fixtures from the API. Browser calls go to `/backend/...`, which Next rewrites to `API_URL` or `http://127.0.0.1:4307`. That keeps `fable_session` (HttpOnly) and `fable_csrf` on the web origin. Mutations send `x-fable-csrf`. Register and log in on the site. Wallet, transactions, profile, settings, and favorites redirect to login when the session cookie is missing.
+
+Demo balances are Fable demo units. They are not withdrawable. Demo odds are catalog fixtures, not a live feed. Game tiles are previews and do not launch a game.
 
 Storybook: `pnpm --filter @fable/web storybook` on port 6134.
 
 ## Environment files
 
-`.env.example` is the template. The API and worker load the repo-root `.env` through dotenv, then a package-local `.env` if one exists. The web app does not read the root file. `NEXT_PUBLIC_API_URL` defaults to `http://127.0.0.1:4307` in code, which is enough for local dev.
+`.env.example` is the template. The API and worker load the repo-root `.env` through dotenv, then a package-local `.env` if one exists. The web app does not read the root file. `API_URL` sets the rewrite target. The browser does not call the API origin directly.
 
 No secret is required. Leave `SENTRY_DSN` empty.
 

@@ -355,7 +355,7 @@ Why it is needed: the specified motion library. It is not used to hide or reveal
 Purpose: a story for the safety banner.
 Compatibility: Storybook 10 with the React Vite framework and Vite 8.
 Maintenance and security: dev and CI build (`build-storybook` is a package script). Stories do not ship in the Next standalone server.
-Why it is needed: the specified component workshop. One story is enough to prove the toolchain. A full catalogue is not the foundation.
+Why it is needed: the specified component workshop. Phase 2 adds stories for the odds button, wallet summary, empty and error states, promotion card, and game card, beside the foundation safety banner.
 
 ### `vite` 8.3.5 and `@vitejs/plugin-react` 6.1.2
 
@@ -386,6 +386,16 @@ Purpose: the metrics registry and `fable_http_requests_total`.
 Compatibility: this is the package that replaced `prom-client`. `prom-client` 15.1.3 is deprecated, so it is not a dependency. The registry API (`Registry`, `Counter`, `collectDefaultMetrics`, `metrics()`) is the one the handler uses.
 Maintenance and security: official Prometheus client. `/metrics` is the scrape surface. Grafana is optional and external.
 Why it is needed: a real exposition format, not a fake JSON metrics route.
+
+## Phase 2 choices that are not new packages
+
+Password hashes use `node:crypto` `scrypt` (N=16384, r=8, p=1, 32-byte key). Argon2 is the usual alternative and was not added: it needs a native addon, and scrypt is already in the Node 22 runtime this repo pins. The stored form is `scrypt$N$r$p$salt$hash`. Raw passwords are not stored. Login of an unknown email still runs scrypt against a placeholder so the failure is not an obvious timing oracle, and the client receives one generic message.
+
+Sessions are random 32-byte ids in an HttpOnly `SameSite=Lax` cookie, with a separate readable CSRF cookie. Nothing auth-related is written to `localStorage`. No cookie or session library was added.
+
+The Next TypeScript target moved from ES2017 to ES2022 in `packages/config/tsconfig/next.json` so `bigint` literals in the bet-slip helpers typecheck. The lib set stays `dom`, `dom.iterable`, and `esnext`. Node packages were already on a newer target.
+
+No npm dependency was added for Phase 2.
 
 ## Explicitly not dependencies
 

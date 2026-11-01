@@ -10,14 +10,26 @@ export class FoundationExceptionFilter implements ExceptionFilter {
     const response = host.switchToHttp().getResponse<{
       status: (code: number) => { send: (body: unknown) => void };
     }>();
-    const status =
-      exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
-    const message =
-      exception instanceof HttpException ? exception.message : 'Internal server error';
-    response.status(status).send({
-      statusCode: status,
-      message,
+    const described = describeException(exception);
+    response.status(described.status).send({
+      statusCode: described.status,
+      message: described.message,
       simulated: true,
     });
   }
+}
+
+function describeException(exception: unknown): { status: number; message: string } {
+  if (!(exception instanceof HttpException)) {
+    return { status: HttpStatus.INTERNAL_SERVER_ERROR, message: 'Internal server error' };
+  }
+  const status = exception.getStatus();
+  const body = exception.getResponse();
+  if (typeof body === 'string') return { status, message: body };
+  if (typeof body === 'object' && body && 'message' in body) {
+    const message = (body as { message: unknown }).message;
+    if (typeof message === 'string') return { status, message };
+    if (Array.isArray(message)) return { status, message: message.map(String).join('; ') };
+  }
+  return { status, message: exception.message };
 }

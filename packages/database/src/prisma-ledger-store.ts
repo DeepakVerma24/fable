@@ -21,6 +21,14 @@ type Tx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 export class PrismaLedgerStore implements LedgerStore {
   constructor(private readonly prisma: PrismaClient) {}
 
+  async listPosted(): Promise<readonly PostedJournal[]> {
+    const rows = await this.prisma.ledgerTransaction.findMany({
+      include: { entries: { include: { account: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map((row) => mapPosted(row));
+  }
+
   async postAtomic(journal: ValidatedJournal): Promise<PostedJournal> {
     try {
       return await this.prisma.$transaction((tx) => this.write(tx, journal));
@@ -130,6 +138,7 @@ type StoredTransaction = {
   idempotencyKey: string;
   kind: string;
   actorId: string | null;
+  createdAt: Date;
   entries: readonly {
     direction: 'DEBIT' | 'CREDIT';
     amountMinor: bigint;
@@ -151,6 +160,7 @@ function mapPosted(row: StoredTransaction): PostedJournal {
       amountMinor: entry.amountMinor,
       currency: entry.currency.trim(),
     })),
+    postedAt: row.createdAt.toISOString(),
   };
 }
 
