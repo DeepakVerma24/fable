@@ -1,0 +1,6 @@
+{
+  "consumer": "fable-web",
+  "provider": "fable-api",
+  "pactDir": "pact/pacts",
+  "broker": null
+}
