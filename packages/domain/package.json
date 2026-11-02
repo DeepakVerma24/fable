@@ -9,7 +9,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
-    "test": "VITE_CONFIG_NATIVE_IGNORE_WARNING=true vitest run"
+    "test": "vitest run"
   },
   "devDependencies": {
     "@fable/config": "workspace:*",

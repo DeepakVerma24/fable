@@ -22,11 +22,11 @@ export class BetController {
 
   @Get()
   @ApiOperation({ summary: 'Demo bets placed in this API process.' })
-  list(@Req() request: PlayerRequest) {
+  async list(@Req() request: PlayerRequest) {
     return {
       simulated: true as const,
       realMoney: false as const,
-      items: this.bets.list(requiredPlayer(request)),
+      items: await this.bets.list(requiredPlayer(request)),
     };
   }
 

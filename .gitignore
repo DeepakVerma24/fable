@@ -21,3 +21,13 @@ npm-debug.log*
 pnpm-debug.log*
 *.log
 apps/web/next-env.d.ts
+
+.phase7-tools
+FABLE-AUDIT-2026-11-03.md
+audit-evidence-2026-11-03
+Microsoft
+
+.phase7-*.py
+phase7-*.log
+
+phase7-*.json

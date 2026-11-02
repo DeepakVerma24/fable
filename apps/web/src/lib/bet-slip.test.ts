@@ -21,7 +21,7 @@ const away: SlipSelection = {
 
 describe('bet slip', () => {
   beforeEach(() => {
-    useBetSlip.setState({ selection: null, stake: '10.00', open: false });
+    useBetSlip.setState({ selection: null, pendingRequest: null, stake: '10.00', open: false });
   });
 
   it('keeps a single selection and removes it when chosen again', () => {
@@ -39,5 +39,27 @@ describe('bet slip', () => {
     expect(useBetSlip.getState().stake).toBe('10.50');
     useBetSlip.getState().remove();
     expect(useBetSlip.getState().selection).toBeNull();
+  });
+});
+
+describe('pending bet request identity', () => {
+  beforeEach(() => useBetSlip.setState({ pendingRequest: null }));
+  it('reuses the operation identity when a response is lost', () => {
+    const store = useBetSlip.getState();
+    const key = store.requestKey('selection', 1000n);
+    expect(store.requestKey('selection', 1000n)).toBe(key);
+  });
+  it('uses a new identity for changed economic terms', () => {
+    const store = useBetSlip.getState();
+    const first = store.requestKey('selection', 1000n);
+    const second = store.requestKey('selection', 2000n);
+    expect(second).not.toBe(first);
+    expect(store.requestKey('other', 2000n)).not.toBe(second);
+  });
+  it('starts a new operation after success removes the slip', () => {
+    const store = useBetSlip.getState();
+    const key = store.requestKey('selection', 1000n);
+    store.remove();
+    expect(store.requestKey('selection', 1000n)).not.toBe(key);
   });
 });

@@ -37,6 +37,7 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   sessions     Session[]
+  bets         DemoBet[]
 
   @@map("users")
 }
@@ -70,12 +71,13 @@ model LedgerAccount {
 
 /// One balanced journal. Idempotency key is unique. simulated is locked true in SQL.
 model LedgerTransaction {
-  id             String        @id @db.Uuid
-  idempotencyKey String        @unique @map("idempotency_key")
+  id             String               @id @db.Uuid
+  idempotencyKey String               @unique @map("idempotency_key")
   kind           String
-  actorId        String?       @map("actor_id")
-  simulated      Boolean       @default(true)
-  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  actorId        String?              @map("actor_id")
+  simulated      Boolean              @default(true)
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  postingXid     Unsupported("xid8")? @default(dbgenerated("pg_current_xact_id()")) @map("posting_xid")
   entries        LedgerEntry[]
 
   @@map("ledger_transactions")
@@ -83,6 +85,7 @@ model LedgerTransaction {
 
 /// Immutable double-entry line. No updatedAt. Updates and deletes are rejected by trigger.
 model LedgerEntry {
+  position      Int               @default(0)
   id            String            @id @db.Uuid
   transactionId String            @map("transaction_id") @db.Uuid
   transaction   LedgerTransaction @relation(fields: [transactionId], references: [id], onDelete: Restrict)
@@ -110,4 +113,16 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@map("audit_log")
+}
+
+model DemoBet {
+  userId          String @map("user_id") @db.Uuid
+  user            User   @relation(fields: [userId], references: [id])
+  idempotencyKey  String @map("idempotency_key")
+  fingerprint     String
+  record          Json
+  placementRecord Json   @map("placement_record")
+
+  @@id([userId, idempotencyKey])
+  @@map("demo_bets")
 }

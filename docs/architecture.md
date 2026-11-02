@@ -37,7 +37,7 @@ Workers are a separate OS process so a queue stall does not take down HTTP. The 
 - `packages/domain` is pure TypeScript. Persistence lives in `packages/database`.
 - `packages/observability` is logging, optional tracing, optional Sentry, and the Prometheus registry.
 
-When `DATABASE_URL` is unset, the API uses an in-memory ledger and an in-memory player directory. Journals and sessions disappear when the process restarts. When the URL is set, `PrismaLedgerStore` commits each journal and its audit row in one Postgres transaction, and `PrismaPlayerStore` keeps users and sessions in Postgres. Favorites and the demo bet book stay in process memory either way. The financial record of a bet is the journal list, not that book.
+When `DATABASE_URL` is unset, the API uses an in-memory ledger and an in-memory player directory. Journals and sessions disappear when the process restarts. When the URL is set, `PrismaLedgerStore` commits each journal and its audit row in one Postgres transaction, and `PrismaPlayerStore` keeps users and sessions in Postgres. Favorites remain in process memory. Bet records and original placement responses persist in PostgreSQL with journals when configured; the memory bet store is local-demo only. The ledger remains the balance authority. See [Phase 7](phase-7-financial-integrity.md) for the atomic bet lifecycle and recovery contract.
 
 Demo bets do not add a journal kind. `DemoSportsbook` asks the sportsbook boundary for two simulated sportsbook journals: available wallet to hold, then hold to the wallet and the house. `DemoWallet` posts the opening grant through `Ledger.post` with `simulated: true`. Controllers do not write lines. See [financial safety](financial-safety.md).
 

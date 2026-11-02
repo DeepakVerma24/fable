@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { createPrismaClient, PrismaPlayerStore } from '@fable/database';
+import { createPrismaClient, PrismaPlayerStore, PrismaBetStore } from '@fable/database';
 import {
   DemoSportsbook,
   DemoWallet,
@@ -17,7 +17,8 @@ import { FavoritesService } from '../favorites/favorites.service';
 import { LEDGER, LedgerModule } from '../ledger/ledger.module';
 import { PromotionsController } from '../promotions/promotions.controller';
 import { BetController } from '../sports/bet.controller';
-import { BetService } from '../sports/bet.service';
+import { MemoryBetStore } from '../sports/memory-bet-store';
+import { BET_STORE, BetService } from '../sports/bet.service';
 import { SportsController } from '../sports/sports.controller';
 import { WalletController } from '../wallet/wallet.controller';
 import { WalletService } from '../wallet/wallet.service';
@@ -52,6 +53,16 @@ import { PLAYER_STORE } from './tokens';
       provide: DemoSportsbook,
       inject: [SportsbookBoundary],
       useFactory: (boundary: SportsbookBoundary) => new DemoSportsbook(boundary),
+    },
+    {
+      provide: BET_STORE,
+      inject: [LEDGER],
+      useFactory: (ledger: Ledger) => {
+        const url = process.env.DATABASE_URL;
+        if (url) return new PrismaBetStore(createPrismaClient(url));
+        if (process.env.FABLE_ENV === 'prod') throw new Error('Production requires PostgreSQL');
+        return new MemoryBetStore(ledger);
+      },
     },
     AuthService,
     BetService,

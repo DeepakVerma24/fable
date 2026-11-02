@@ -23,7 +23,7 @@ export class PrismaLedgerStore implements LedgerStore {
 
   async listPosted(): Promise<readonly PostedJournal[]> {
     const rows = await this.prisma.ledgerTransaction.findMany({
-      include: { entries: { include: { account: true } } },
+      include: { entries: { include: { account: true }, orderBy: { position: 'asc' } } },
       orderBy: { createdAt: 'asc' },
     });
     return rows.map((row) => mapPosted(row));
@@ -31,12 +31,16 @@ export class PrismaLedgerStore implements LedgerStore {
 
   async postAtomic(journal: ValidatedJournal): Promise<PostedJournal> {
     try {
-      return await this.prisma.$transaction((tx) => this.write(tx, journal));
+      return await retryFinancial(() =>
+        this.prisma.$transaction((tx) => this.write(tx, journal), {
+          isolationLevel: 'Serializable',
+        }),
+      );
     } catch (error) {
       if (!isUniqueConflict(error)) throw error;
       const existing = await this.prisma.ledgerTransaction.findUnique({
         where: { idempotencyKey: journal.idempotencyKey },
-        include: { entries: { include: { account: true } } },
+        include: { entries: { include: { account: true }, orderBy: { position: 'asc' } } },
       });
       if (!existing) throw error;
       const posted = mapPosted(existing);
@@ -45,10 +49,10 @@ export class PrismaLedgerStore implements LedgerStore {
     }
   }
 
-  private async write(tx: Tx, journal: ValidatedJournal): Promise<PostedJournal> {
+  async write(tx: Tx, journal: ValidatedJournal): Promise<PostedJournal> {
     const existing = await tx.ledgerTransaction.findUnique({
       where: { idempotencyKey: journal.idempotencyKey },
-      include: { entries: { include: { account: true } } },
+      include: { entries: { include: { account: true }, orderBy: { position: 'asc' } } },
     });
     if (existing) {
       const posted = mapPosted(existing);
@@ -56,6 +60,10 @@ export class PrismaLedgerStore implements LedgerStore {
       return posted;
     }
 
+    // A consistent lock order covers absent accounts as well as existing rows.
+    for (const code of [...new Set(journal.lines.map((line) => line.accountCode))].sort()) {
+      await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtextextended(${code}, 0))`;
+    }
     const accountIds = new Map<string, string>();
     for (const line of journal.lines) {
       if (accountIds.has(line.accountCode)) continue;
@@ -72,13 +80,14 @@ export class PrismaLedgerStore implements LedgerStore {
         actorId: journal.actorId,
         simulated: true,
         entries: {
-          create: journal.lines.map((line) => {
+          create: journal.lines.map((line, index) => {
             const accountId = accountIds.get(line.accountCode);
             if (!accountId) {
               throw new LedgerError('account', `Account ${line.accountCode} was not created.`);
             }
             return {
               id: randomUUID(),
+              position: index + 1,
               accountId,
               direction: line.direction,
               amountMinor: line.amountMinor,
@@ -87,7 +96,7 @@ export class PrismaLedgerStore implements LedgerStore {
           }),
         },
       },
-      include: { entries: { include: { account: true } } },
+      include: { entries: { include: { account: true }, orderBy: { position: 'asc' } } },
     });
 
     await tx.auditLog.create({
@@ -166,4 +175,26 @@ function mapPosted(row: StoredTransaction): PostedJournal {
 
 function isUniqueConflict(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
+}
+
+/** Retry only complete aborted transactions. Exhaustion is surfaced to the caller. */
+export async function retryFinancial<T>(run: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await run();
+    } catch (error) {
+      if (attempt >= 4 || !isRetryable(error)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 10 * 2 ** attempt + Math.random() * 20));
+    }
+  }
+}
+
+function isRetryable(error: unknown, depth = 0): boolean {
+  if (!error || typeof error !== 'object' || depth > 6) return false;
+  return Object.entries(error).some(
+    ([key, value]) =>
+      (['code', 'sqlState', 'originalCode'].includes(key) &&
+        ['P2034', 'P2002', '40001', '40P01'].includes(String(value))) ||
+      (typeof value === 'object' && isRetryable(value, depth + 1)),
+  );
 }

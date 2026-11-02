@@ -54,7 +54,7 @@ After that request, reserved is back to zero. The summary still derives reserved
 
 Stake is 100 to 50,000 minor units. Odds are two-decimal strings from 1.01 to 100.00. The server ignores the price the browser sent and quotes the fixture. Payout is `(stake * oddsScaled + 50) / 100`, half up. Win or loss is the parity of the selection id's character codes. That rule is written on the slip. It is not a sports result.
 
-Client idempotency keys are 8 to 80 safe characters. The journals are `bet-rsv-{key}` and `bet-stl-{key}`. A per-user lock checks the derived available balance before posting, so two concurrent slips cannot overdraw. Replaying a key returns the stored bet and does not post again.
+Client idempotency keys are 8 to 80 safe characters. The journals are `bet-rsv-{userId}-{key}` and `bet-stl-{userId}-{key}`. PostgreSQL uses serializable transactions and database transaction locks around funds checks and posting, including separate API instances. An immutable placement response and payload fingerprint provide durable replay. The process-memory fallback is only a local demo. See [Phase 7](phase-7-financial-integrity.md) for journal sealing, SQL nonnegative-wallet checks, atomic state transitions, recovery, and tested failure boundaries.
 
 The API composition root is the only caller of `DemoWallet` and `DemoSportsbook`. Casino tiles are `playable: false`. Nothing in the web app assigns a balance.
 

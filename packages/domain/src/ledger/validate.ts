@@ -108,9 +108,13 @@ export function assertSamePayload(expected: ValidatedJournal, posted: PostedJour
   if (expected.lines.length !== posted.lines.length) {
     throw conflict(expected.idempotencyKey);
   }
-  for (let index = 0; index < expected.lines.length; index += 1) {
-    const left = expected.lines[index];
-    const right = posted.lines[index];
+  const key = (line: JournalLine) =>
+    JSON.stringify([line.accountCode, line.direction, line.amountMinor.toString(), line.currency]);
+  const leftLines = [...expected.lines].sort((a, b) => key(a).localeCompare(key(b)));
+  const rightLines = [...posted.lines].sort((a, b) => key(a).localeCompare(key(b)));
+  for (let index = 0; index < leftLines.length; index += 1) {
+    const left = leftLines[index];
+    const right = rightLines[index];
     if (!left || !right) throw conflict(expected.idempotencyKey);
     if (
       left.accountCode !== right.accountCode ||
