@@ -2,10 +2,17 @@
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+const databaseRequire = createRequire(
+  new URL('../packages/database/package.json', import.meta.url),
+);
+const { createPrismaClient, PrismaLedgerStore } = databaseRequire('./dist');
+const { Ledger, reservationLines, settlementLines } = databaseRequire('@fable/domain');
 const url = process.env.FABLE_POSTGRES_TEST_URL;
 if (!url)
   throw new Error('FABLE_POSTGRES_TEST_URL must point to the dedicated migrated test database');
 const children = [];
+let database;
 async function port() {
   const s = createServer();
   await new Promise((r) => s.listen(0, '127.0.0.1', r));
@@ -102,10 +109,45 @@ try {
   assert.equal(replay[0].status, 201);
   assert.deepEqual(replay[0], replay[1]);
   assert.equal((await bet(a, other, key, '200')).status, 409);
+  const legacy = await register(a);
+  const me = await (await fetch(a + '/auth/me', { headers: legacy })).json();
+  database = createPrismaClient(url);
+  const ledger = new Ledger(new PrismaLedgerStore(database));
+  const legacyKey = crypto.randomUUID();
+  for (const [prefix, lines] of [
+    ['bet-rsv-', reservationLines(me.player.id, 100n)],
+    ['bet-stl-', settlementLines(me.player.id, 100n, 0n)],
+  ]) {
+    await ledger.post({
+      idempotencyKey: prefix + legacyKey,
+      actorId: me.player.id,
+      kind: 'SIMULATED_SPORTSBOOK_SETTLEMENT',
+      simulated: true,
+      lines,
+    });
+  }
+  const legacyResults = await Promise.all([
+    bet(a, legacy, legacyKey, '100'),
+    bet(b, legacy, legacyKey, '100'),
+    bet(b, legacy, legacyKey, '200'),
+  ]);
+  assert.ok(legacyResults.every((result) => result.status === 409));
+  // Discard the response and retry again on the other process.
+  assert.equal((await bet(b, legacy, legacyKey, '100')).status, 409);
+  assert.equal(
+    (await (await fetch(b + '/wallet', { headers: legacy })).json()).availableMinor,
+    '99900',
+  );
+  assert.equal(await database.ledgerTransaction.count({ where: { actorId: me.player.id } }), 3);
+  assert.equal((await (await fetch(b + '/demo/bets', { headers: legacy })).json()).items.length, 0);
+  console.log(
+    'PASS: legacy retries, changed payload and uncertain responses across two API processes produce 409 without another debit',
+  );
   console.log(
     'PASS: two API processes, shared PostgreSQL, no overspend, concurrent replay, changed-payload conflict',
   );
 } finally {
+  await database?.$disconnect();
   await Promise.all(
     children.map(
       (c) =>

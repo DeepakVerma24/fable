@@ -50,6 +50,7 @@ export class PrismaLedgerStore implements LedgerStore {
   }
 
   async write(tx: Tx, journal: ValidatedJournal): Promise<PostedJournal> {
+    await tx.$queryRaw`SELECT public.fable_require_financial_hardening()`;
     const existing = await tx.ledgerTransaction.findUnique({
       where: { idempotencyKey: journal.idempotencyKey },
       include: { entries: { include: { account: true }, orderBy: { position: 'asc' } } },

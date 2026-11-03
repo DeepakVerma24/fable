@@ -57,16 +57,26 @@ model Session {
 
 /// Named account. Balance is not stored here.
 model LedgerAccount {
-  id        String            @id @db.Uuid
-  code      String            @unique
+  id        String              @id @db.Uuid
+  code      String              @unique
   type      LedgerAccountType
-  currency  String            @db.Char(3)
-  userId    String?           @map("user_id") @db.Uuid
-  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  currency  String              @db.Char(3)
+  userId    String?             @map("user_id") @db.Uuid
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   entries   LedgerEntry[]
+  fence     LedgerAccountFence?
 
   @@index([userId])
   @@map("ledger_accounts")
+}
+
+/// MVCC conflict detection only. All balances still derive from immutable entries.
+model LedgerAccountFence {
+  accountId String        @id @map("account_id") @db.Uuid
+  account   LedgerAccount @relation(fields: [accountId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  revision  BigInt        @default(0)
+
+  @@map("ledger_account_fences")
 }
 
 /// One balanced journal. Idempotency key is unique. simulated is locked true in SQL.

@@ -21,6 +21,7 @@ export class PrismaBetStore implements BetStore {
     return retryFinancial(() =>
       this.prisma.$transaction(
         async (tx) => {
+          await tx.$queryRaw`SELECT public.fable_require_financial_hardening()`;
           // All operations for this wallet, including different idempotency keys, share this DB lock.
           await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtextextended(${`bet-user:${userId}`}, 0))`;
           const rows = await tx.$queryRaw<
@@ -34,6 +35,20 @@ export class PrismaBetStore implements BetStore {
             );
           if (!old && fingerprint === null) throw new LedgerError('missing_bet', 'Bet not found.');
           if (old && fingerprint !== null) return old.placement_record;
+          // Legacy metadata was process-local. Its immutable journal identity is
+          // durable, but cannot prove selection/odds or reconstruct a response.
+          // Fence globally: missing/mismatched actors and partial pairs are ambiguous.
+          if (!old && fingerprint !== null) {
+            const legacy = await tx.ledgerTransaction.findFirst({
+              where: { idempotencyKey: { in: [`bet-rsv-${key}`, `bet-stl-${key}`] } },
+              select: { id: true },
+            });
+            if (legacy)
+              throw new LedgerError(
+                'idempotency_conflict',
+                'Historical bet identity requires reconciliation; no new bet was placed.',
+              );
+          }
           const base = new PrismaLedgerStore(this.prisma);
           const ledger = new Ledger({
             postAtomic: (journal) => base.write(tx, journal),

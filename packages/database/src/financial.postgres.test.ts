@@ -33,6 +33,7 @@ describe.skipIf(!url)('real PostgreSQL financial invariants', () => {
       '20261101120000_init',
       '20261101183000_player_auth',
       '20261103020000_financial_integrity',
+      '20261103140000_financial_hardening',
     ]) {
       if (migration === '20261103020000_financial_integrity') {
         await pool.query(
