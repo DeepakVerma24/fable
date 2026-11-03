@@ -8,7 +8,7 @@
     "start": "next start --port 3847 --hostname 0.0.0.0",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit --pretty false",
-    "test": "VITE_CONFIG_NATIVE_IGNORE_WARNING=true vitest run",
+    "test": "vitest run",
     "test:e2e": "playwright test",
     "storybook": "storybook dev -p 6134 --ci",
     "build-storybook": "storybook build"

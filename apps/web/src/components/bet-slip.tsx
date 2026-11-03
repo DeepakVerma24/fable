@@ -19,6 +19,7 @@ export function BetSlip({ signedIn }: { signedIn: boolean }) {
   const stake = useBetSlip((state) => state.stake);
   const setStake = useBetSlip((state) => state.setStake);
   const remove = useBetSlip((state) => state.remove);
+  const requestKey = useBetSlip((state) => state.requestKey);
   const [confirm, setConfirm] = useState(false);
   const [result, setResult] = useState<DemoBet | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +37,7 @@ export function BetSlip({ signedIn }: { signedIn: boolean }) {
       return api<DemoBet>('/demo/bets', {
         method: 'POST',
         body: JSON.stringify({
-          idempotencyKey: createKey(),
+          idempotencyKey: requestKey(selection.selectionId, stakeMinor),
           selectionId: selection.selectionId,
           stakeMinor: stakeMinor.toString(),
         }),
@@ -159,10 +160,4 @@ export function BetSlip({ signedIn }: { signedIn: boolean }) {
 
 export function sessionSignedIn(session: SessionResponse | null | undefined): boolean {
   return Boolean(session?.player);
-}
-
-function createKey(): string {
-  const bytes = new Uint8Array(12);
-  crypto.getRandomValues(bytes);
-  return `slip-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
 }

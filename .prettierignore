@@ -9,3 +9,13 @@ pnpm-lock.yaml
 packages/database/generated
 apps/web/next-env.d.ts
 *.tsbuildinfo
+
+.phase7-tools
+FABLE-AUDIT-2026-11-03.md
+audit-evidence-2026-11-03
+Microsoft
+
+.phase7-*.py
+phase7-*.log
+
+phase7-*.json

@@ -9,7 +9,7 @@
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
-    "test": "VITE_CONFIG_NATIVE_IGNORE_WARNING=true vitest run"
+    "test": "vitest run"
   },
   "dependencies": {
     "@fable/database": "workspace:*",

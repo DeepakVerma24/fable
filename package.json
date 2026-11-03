@@ -19,7 +19,8 @@
     "test:e2e": "pnpm --filter @fable/web test:e2e",
     "db:generate": "pnpm --filter @fable/database generate",
     "db:migrate": "pnpm --filter @fable/database migrate",
-    "health": "node scripts/health.mjs"
+    "health": "node scripts/health.mjs",
+    "test:financial:api": "node scripts/financial-api-integration.mjs"
   },
   "devDependencies": {
     "concurrently": "10.0.6",
