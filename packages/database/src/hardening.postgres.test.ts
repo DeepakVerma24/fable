@@ -550,7 +550,7 @@ describe.skipIf(!url)('Phase 7.1 real PostgreSQL regressions', () => {
           await ledger.post({
             idempotencyKey: `bet-rsv-${key}`,
             kind: 'SIMULATED_SPORTSBOOK_SETTLEMENT',
-            actorId: state === 'unknown-actor' ? null : id,
+            actorId: state === 'unknown-actor' ? undefined : id,
             simulated: true,
             lines: reservationLines(id, 10000n),
           });
