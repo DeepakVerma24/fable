@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { OriginalsController, originalEngineProvider } from '../casino/originals.controller';
 import { createPrismaClient, PrismaPlayerStore, PrismaBetStore } from '@fable/database';
 import {
   DemoSportsbook,
@@ -27,6 +28,7 @@ import { PLAYER_STORE } from './tokens';
 @Module({
   imports: [LedgerModule],
   controllers: [
+    OriginalsController,
     AuthController,
     CatalogController,
     SportsController,
@@ -36,6 +38,7 @@ import { PLAYER_STORE } from './tokens';
     FavoritesController,
   ],
   providers: [
+    originalEngineProvider,
     {
       provide: PLAYER_STORE,
       useFactory: () => {

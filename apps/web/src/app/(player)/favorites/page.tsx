@@ -1,56 +1,49 @@
 'use client';
-
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-
+import Link from 'next/link';
 import { GameCard, GameGrid } from '@/components/game-card';
 import { EmptyState, ErrorState, LoadingSkeleton } from '@/components/states';
-import { api } from '@/lib/api-client';
-import type { DemoGame } from '@/lib/types';
-
+import { useFavorites } from '@/lib/favorites';
 export default function FavoritesPage() {
-  const queryClient = useQueryClient();
-  const favorites = useQuery({
-    queryKey: ['favorites'],
-    queryFn: () => api<{ items: DemoGame[] }>('/favorites'),
-  });
-
-  if (favorites.isLoading) return <LoadingSkeleton />;
-  if (favorites.isError || !favorites.data) {
+  const favorites = useFavorites();
+  if (favorites.session.isLoading || favorites.query.isLoading) return <LoadingSkeleton />;
+  if (!favorites.playerId)
     return (
-      <ErrorState
-        body="Saved previews could not be loaded."
-        onRetry={() => void favorites.refetch()}
-      />
+      <Link href="/login?next=/favorites" className="underline">
+        Sign in to view favorites
+      </Link>
     );
-  }
-
   return (
     <div className="space-y-4">
-      <header>
-        <p className="text-[11px] font-medium tracking-[0.16em] text-faint uppercase">Saved</p>
-        <h1 className="text-2xl font-semibold tracking-tight">Favorites</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Previews you saved. They still do not launch.
-        </p>
-      </header>
-      {favorites.data.items.length === 0 ? (
-        <EmptyState title="No favorites" body="Save a preview from the casino lobby." />
-      ) : (
+      <h1 className="section-heading">Favorites</h1>
+      <p className="text-sm text-muted-foreground">
+        Titles saved in this browser and the current API session. Only implemented Originals can
+        launch a nonfinancial demo.
+      </p>
+      {favorites.query.isError ? (
+        <ErrorState
+          body="Saved games could not be loaded."
+          onRetry={() => void favorites.query.refetch()}
+        />
+      ) : favorites.query.data?.items.length ? (
         <GameGrid>
-          {favorites.data.items.map((game) => (
+          {favorites.query.data.items.map((game) => (
             <GameCard
               key={game.id}
               game={game}
               favorited
-              onFavorite={() => {
-                void api(`/favorites/${game.id}`, { method: 'DELETE' }).then(() =>
-                  queryClient.invalidateQueries({ queryKey: ['favorites'] }),
-                );
-              }}
+              favoritePending={favorites.pending}
+              onFavorite={() => favorites.toggle(game.id)}
             />
           ))}
         </GameGrid>
+      ) : (
+        <EmptyState title="No favorites" body="Save a title from the casino lobby." />
       )}
+      {favorites.error ? (
+        <p role="alert" className="text-sm text-danger">
+          Could not update favorites: {favorites.error}
+        </p>
+      ) : null}
     </div>
   );
 }

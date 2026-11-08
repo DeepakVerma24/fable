@@ -202,6 +202,55 @@ describe('player API', () => {
       .expect(401);
   }, 30_000);
 
+  it('serves cricket formats and rejects closed or unsupported cricket selections while replaying an enabled single', async () => {
+    const player = await register('cricket@example.invalid', 'Cricket player');
+    const fixtures = await request(app.getHttpServer()).get('/sports/cricket/events').expect(200);
+    expect(fixtures.body.items).toHaveLength(4);
+    const named = await request(app.getHttpServer())
+      .get('/sports/cricket/events')
+      .query({ competition: 'Indian Premier League (IPL)' })
+      .expect(200);
+    expect(named.body.items).toHaveLength(0);
+    const completed = await request(app.getHttpServer())
+      .get('/sports/cricket/events')
+      .query({ phase: 'completed' })
+      .expect(200);
+    expect(completed.body.items[0].id).toBe('crk-archive-test');
+    const input = {
+      idempotencyKey: 'cricket-single-0001',
+      selectionId: 'crk-ivory-t20-winner-home',
+      stakeMinor: '1000',
+    };
+    const place = (body: typeof input) =>
+      request(app.getHttpServer())
+        .post('/demo/bets')
+        .set('cookie', player.cookie)
+        .set('x-fable-csrf', player.csrf)
+        .send(body);
+    const first = await place(input).expect(201);
+    expect(first.body).toMatchObject({
+      simulated: true,
+      realMoney: false,
+      status: 'settled',
+      eventId: 'crk-ivory-t20',
+      decimalOdds: '1.85',
+    });
+    const again = await place(input).expect(201);
+    expect(again.body).toEqual(first.body);
+    for (const selectionId of [
+      'crk-archive-test-winner-home',
+      'crk-coast-t10-winner-home',
+      'crk-ivory-t20-preview-0-home',
+    ]) {
+      await place({ ...input, idempotencyKey: `reject-${selectionId}`, selectionId }).expect(404);
+    }
+    const history = await request(app.getHttpServer())
+      .get('/demo/bets')
+      .set('cookie', player.cookie)
+      .expect(200);
+    expect(history.body.items).toHaveLength(1);
+  });
+
   async function register(email: string, displayName: string) {
     const csrf = await request(app.getHttpServer()).get('/auth/csrf').expect(200);
     const cookie = cookiePair(csrf, 'fable_csrf');

@@ -1,10 +1,14 @@
+import { ORIGINAL_GAMES, type OriginalKind } from '../casino/originals';
+
 export interface DemoGame {
   id: string;
   name: string;
   categories: readonly string[];
-  provider: 'FABLE Preview';
-  /** Always false. These tiles are metadata, not a game client. */
-  playable: false;
+  provider: 'FABLE Preview' | 'FABLE Originals';
+  /** Only true for an implemented nonfinancial original. */
+  playable: boolean;
+  originalKind?: OriginalKind;
+  rules?: readonly string[];
   demo: true;
   summary: string;
   featured: boolean;
@@ -16,6 +20,10 @@ export const GAME_CATEGORIES = [
   { slug: 'slots', name: 'Slots' },
   { slug: 'live', name: 'Live Casino' },
   { slug: 'table', name: 'Table Games' },
+  { slug: 'blackjack', name: 'Blackjack' },
+  { slug: 'roulette', name: 'Roulette' },
+  { slug: 'baccarat', name: 'Baccarat' },
+  { slug: 'game-shows', name: 'Game Shows' },
   { slug: 'originals', name: 'Originals' },
   { slug: 'new', name: 'New Games' },
   { slug: 'popular', name: 'Popular Games' },
@@ -37,7 +45,7 @@ export const DEMO_GAMES: readonly DemoGame[] = [
   {
     id: 'quiet-table',
     name: 'Quiet Table',
-    categories: ['table', 'popular'],
+    categories: ['table', 'blackjack', 'popular'],
     provider: 'FABLE Preview',
     playable: false,
     demo: true,
@@ -47,21 +55,9 @@ export const DEMO_GAMES: readonly DemoGame[] = [
     popularity: 91,
   },
   {
-    id: 'paper-dice',
-    name: 'Paper Dice',
-    categories: ['originals', 'new'],
-    provider: 'FABLE Preview',
-    playable: false,
-    demo: true,
-    summary: 'Original dice study. Not a wagerable game.',
-    featured: false,
-    recommended: true,
-    popularity: 76,
-  },
-  {
     id: 'harbor-roulette',
     name: 'Harbor Roulette',
-    categories: ['live', 'table', 'popular'],
+    categories: ['live', 'table', 'roulette', 'popular'],
     provider: 'FABLE Preview',
     playable: false,
     demo: true,
@@ -85,7 +81,7 @@ export const DEMO_GAMES: readonly DemoGame[] = [
   {
     id: 'white-room',
     name: 'White Room Baccarat',
-    categories: ['live', 'table'],
+    categories: ['live', 'table', 'baccarat'],
     provider: 'FABLE Preview',
     playable: false,
     demo: true,
@@ -193,7 +189,7 @@ export const DEMO_GAMES: readonly DemoGame[] = [
   {
     id: 'studio-seats',
     name: 'Studio Seats',
-    categories: ['live', 'new'],
+    categories: ['live', 'game-shows', 'new'],
     provider: 'FABLE Preview',
     playable: false,
     demo: true,
@@ -214,6 +210,20 @@ export const DEMO_GAMES: readonly DemoGame[] = [
     recommended: false,
     popularity: 69,
   },
+  ...ORIGINAL_GAMES.map((game): DemoGame => ({
+    id: game.id,
+    name: game.name,
+    categories: ['originals', 'new'],
+    provider: 'FABLE Originals',
+    playable: true,
+    demo: true,
+    originalKind: game.kind,
+    rules: game.rules,
+    summary: game.summary,
+    featured: false,
+    recommended: true,
+    popularity: 85,
+  })),
 ];
 
 export function gameById(id: string): DemoGame | null {
@@ -221,5 +231,5 @@ export function gameById(id: string): DemoGame | null {
 }
 
 export function gameProviders(): readonly string[] {
-  return ['FABLE Preview'];
+  return [...new Set(DEMO_GAMES.map((game) => game.provider))];
 }

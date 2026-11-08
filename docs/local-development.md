@@ -22,7 +22,7 @@ pnpm dev
 
 Open http://127.0.0.1:3847. The player app loads casino previews and sports fixtures from the API. Browser calls go to `/backend/...`, which Next rewrites to `API_URL` or `http://127.0.0.1:4307`. That keeps `fable_session` (HttpOnly) and `fable_csrf` on the web origin. Mutations send `x-fable-csrf`. Register and log in on the site. Wallet, transactions, profile, settings, and favorites redirect to login when the session cookie is missing.
 
-Demo balances are Fable demo units. They are not withdrawable. Demo odds are catalog fixtures, not a live feed. Game tiles are previews and do not launch a game.
+Demo balances use nonwithdrawable Fable demo units. Demo odds come from catalog fixtures. Signed-in players can launch Dice, Mines, Plinko and Limbo as nonfinancial practice games. The other casino titles open preview pages.
 
 Storybook: `pnpm --filter @fable/web storybook` on port 6134.
 
@@ -40,6 +40,8 @@ DIRECT_DATABASE_URL=postgresql://fable:fable@127.0.0.1:54329/fable?schema=public
 ```
 
 Set `DATABASE_URL` to the PgBouncer URL from `.env.example` before starting the API if you want journals in Postgres. Omit it to stay on the in-memory ledger.
+
+The four playable Originals require a migrated PostgreSQL database. Configure the API's `DATABASE_URL` and run `pnpm db:migrate` against its direct database connection before opening a practice room. The casino catalog can still be browsed while round storage is unavailable. For integration tests and the process-restart harness, use a dedicated `fable_casino_*` database. [Casino session recovery and verification](casino-recovery/IMPLEMENTATION.md)
 
 `pnpm db:generate` rebuilds the Prisma client into `packages/database/generated`, which is gitignored. Generate runs as part of the database package build.
 

@@ -5,30 +5,33 @@ export function OddsButton({
   decimalOdds,
   selected,
   suspended,
+  closed = false,
   onSelect,
 }: {
   name: string;
   decimalOdds: string;
   selected: boolean;
   suspended: boolean;
+  closed?: boolean;
   onSelect: () => void;
 }) {
   return (
     <button
       type="button"
-      disabled={suspended}
+      disabled={suspended || closed}
       aria-pressed={selected}
       onClick={onSelect}
       className={cn(
-        'flex min-h-11 min-w-[4.5rem] flex-1 flex-col items-center justify-center rounded-md border px-2 py-1 text-center transition-colors',
-        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
+        'flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center rounded-md border px-2 py-1 text-center transition-colors',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
         suspended && 'cursor-not-allowed border-border text-faint',
         !suspended && !selected && 'border-border bg-background hover:bg-accent',
-        selected && 'border-white bg-white text-primary-foreground',
+        selected && 'border-primary bg-primary text-primary-foreground',
       )}
     >
       <span className="max-w-full truncate text-[11px] text-current/80">
-        {suspended ? 'Suspended' : name}
+        {name}
+        {closed ? ' · Closed' : suspended ? ' · Suspended' : ''}
       </span>
       <span className="text-sm font-semibold tabular-nums">{decimalOdds}</span>
     </button>

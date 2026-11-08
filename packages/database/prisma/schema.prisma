@@ -30,14 +30,15 @@ enum LedgerDirection {
 /// Player directory row. password_hash is a scrypt string, never a raw password.
 /// There is still no payment profile and no real-money flag.
 model User {
-  id           String    @id @default(uuid()) @db.Uuid
-  email        String    @unique
-  displayName  String    @map("display_name")
-  passwordHash String    @map("password_hash")
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id           String            @id @default(uuid()) @db.Uuid
+  email        String            @unique
+  displayName  String            @map("display_name")
+  passwordHash String            @map("password_hash")
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
   sessions     Session[]
   bets         DemoBet[]
+  casinoRounds CasinoDemoRound[]
 
   @@map("users")
 }
@@ -135,4 +136,53 @@ model DemoBet {
 
   @@id([userId, idempotencyKey])
   @@map("demo_bets")
+}
+
+model CasinoDemoNamespace {
+  singleton Boolean           @id @default(true)
+  id        String            @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rounds    CasinoDemoRound[]
+
+  @@map("casino_demo_namespace")
+}
+
+model CasinoDemoRound {
+  id            String              @id @db.Uuid
+  playerId      String              @map("player_id") @db.Uuid
+  player        User                @relation(fields: [playerId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  namespaceId   String              @map("namespace_id") @db.Uuid
+  namespace     CasinoDemoNamespace @relation(fields: [namespaceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  startKey      String              @map("start_key") @db.VarChar(80)
+  gameId        String              @map("game_id")
+  gameKind      String              @map("game_kind")
+  schemaVersion Int                 @map("schema_version") @db.SmallInt
+  status        String
+  revision      Int
+  inputs        Json
+  publicResult  Json                @map("public_result")
+  privateMines  Json                @map("private_mines")
+  createdAt     DateTime            @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime            @map("updated_at") @db.Timestamptz(3)
+  commands      CasinoDemoCommand[]
+
+  @@unique([playerId, id])
+  @@unique([playerId, startKey])
+  @@index([playerId, gameId, createdAt(sort: Desc), id(sort: Desc)], map: "casino_demo_player_history")
+  @@map("casino_demo_rounds")
+}
+
+model CasinoDemoCommand {
+  playerId    String          @map("player_id") @db.Uuid
+  requestKey  String          @map("request_key") @db.VarChar(80)
+  roundId     String          @map("round_id") @db.Uuid
+  round       CasinoDemoRound @relation(fields: [playerId, roundId], references: [playerId, id], onDelete: NoAction, onUpdate: NoAction)
+  operation   String
+  fingerprint String
+  revision    Int
+  response    Json
+  createdAt   DateTime        @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
+
+  @@id([playerId, requestKey])
+  @@unique([roundId, revision])
+  @@map("casino_demo_commands")
 }

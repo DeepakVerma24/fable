@@ -4,3 +4,5 @@ export { createPrismaClient, pingDatabase } from './prisma';
 export { createBullConnection, createRedisClient, pingRedis } from './redis';
 
 export { PrismaBetStore } from './prisma-bet-store';
+
+export { PostgresOriginalSessions } from './postgres-original-sessions';

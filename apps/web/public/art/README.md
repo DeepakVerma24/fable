@@ -1,0 +1,1 @@
+Original artwork generated for FABLE using OpenAI image generation, November 2026. No reference screenshot pixels or third-party game branding are used. The casino image contains four decorative panels; all names, disclosures and controls are separate HTML. Sports artwork is decorative and does not depict fixture participants.

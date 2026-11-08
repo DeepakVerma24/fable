@@ -10,16 +10,14 @@ test('homepage states the simulated boundary and reaches the lobbies', async ({ 
   await expect(page.getByText(/Demo odds are not live prices/i)).toBeVisible();
   await page.getByRole('link', { name: 'Casino' }).first().click();
   await expect(page.getByRole('heading', { name: 'Casino lobby' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Northline Reels' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Northline Reels' }).first()).toBeVisible();
 });
 
 test('sportsbook slip rejects a signed-out submit and accepts a demo bet', async ({ page }) => {
   await page.goto('/sports/event/fbl-north-harbor');
   await expect(page.getByText(/not a live feed|demo decimals/i).first()).toBeVisible();
-  await page
-    .getByRole('button', { name: /West Signal/i })
-    .first()
-    .click();
+  const awayPrice = page.getByRole('button', { name: /West Signal/i }).first();
+  if ((await awayPrice.getAttribute('aria-pressed')) !== 'true') await awayPrice.click();
   await expect(page.getByLabel('Stake (FBU)').first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign in to submit' }).first()).toBeDisabled();
 
@@ -36,10 +34,8 @@ test('sportsbook slip rejects a signed-out submit and accepts a demo bet', async
   await expect(page.getByText(/cannot be withdrawn/i)).toBeVisible();
 
   await page.goto('/sports/event/fbl-north-harbor');
-  await page
-    .getByRole('button', { name: /West Signal/i })
-    .first()
-    .click();
+  const savedAwayPrice = page.getByRole('button', { name: /West Signal/i }).first();
+  if ((await savedAwayPrice.getAttribute('aria-pressed')) !== 'true') await savedAwayPrice.click();
   const stake = page.getByLabel('Stake (FBU)').first();
   await stake.fill('10.00');
   await page.getByRole('button', { name: 'Submit demo bet' }).first().click();
@@ -91,7 +87,7 @@ test('records navigation timing and screenshots', async ({ page }) => {
   });
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/casino');
-  await expect(page.getByRole('link', { name: 'Northline Reels' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Northline Reels' }).first()).toBeVisible();
   await page.screenshot({
     path: '../../docs/phase-2/screenshots/casino-1280.png',
     fullPage: true,
@@ -165,9 +161,9 @@ test('lost committed bet response retries the same operation without a second de
   });
   await page.getByRole('button', { name: 'Submit demo bet' }).first().click();
   await page.getByRole('button', { name: 'Submit', exact: true }).click();
-  await expect(page.getByText('The demo bet was not accepted.').first()).toBeVisible();
-  await page.getByRole('button', { name: 'Submit demo bet' }).first().click();
-  await page.getByRole('button', { name: 'Submit', exact: true }).click();
+  await expect(page.getByText(/Response uncertain/).first()).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: 'Retry saved request' }).first().click();
   await expect(page.getByText(/Demo win/i).first()).toBeVisible();
   expect(keys).toHaveLength(2);
   expect(keys[1]).toBe(keys[0]);

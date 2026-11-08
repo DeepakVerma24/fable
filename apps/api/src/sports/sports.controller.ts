@@ -8,7 +8,7 @@ import { ZodValidationPipe } from '../http/zod-validation.pipe';
 
 const listSchema = z.object({
   competition: z.string().trim().max(80).optional(),
-  phase: z.enum(['upcoming', 'demo-live']).optional(),
+  phase: z.enum(['upcoming', 'demo-live', 'completed']).optional(),
   page: z.coerce.number().int().positive().optional(),
   pageSize: z.coerce.number().int().positive().max(50).optional(),
 });

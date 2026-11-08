@@ -8,6 +8,20 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: casino_ci
+          POSTGRES_DB: fable_casino_ci
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U casino_ci -d fable_casino_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      FABLE_CASINO_TEST_URL: postgresql://casino_ci@127.0.0.1:5432/fable_casino_ci
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -20,10 +34,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
+      - run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ env.FABLE_CASINO_TEST_URL }}
       - run: pnpm test
       - run: pnpm build
+      - run: pnpm test:casino:recovery
       - run: pnpm --filter @fable/web exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+        env:
+          DATABASE_URL: ${{ env.FABLE_CASINO_TEST_URL }}
       - uses: hashicorp/setup-terraform@v3
       - name: Validate Terraform skeletons
         run: |

@@ -20,7 +20,8 @@
     "db:generate": "pnpm --filter @fable/database generate",
     "db:migrate": "pnpm --filter @fable/database migrate",
     "health": "node scripts/health.mjs",
-    "test:financial:api": "node scripts/financial-api-integration.mjs"
+    "test:financial:api": "node scripts/financial-api-integration.mjs",
+    "test:casino:recovery": "node scripts/casino-api-recovery.mjs"
   },
   "devDependencies": {
     "concurrently": "10.0.6",

@@ -96,3 +96,18 @@ export type { DemoBetRecord, BetStore } from './sportsbook/bet-store';
 export { assertStake } from './sportsbook/demo-bet';
 
 export { DemoBetOperations } from './sportsbook/bet-operations';
+
+export {
+  OriginalRules,
+  type StoredOriginalRound,
+  OriginalError,
+  ORIGINAL_GAMES,
+  PLINKO_MULTIPLIERS,
+  PRACTICE_POINTS,
+  minesMultiplier,
+  type OriginalRound,
+  type OriginalKind,
+  type OriginalOptions,
+  type StartOriginal,
+  type OriginalAction,
+} from './casino/originals';

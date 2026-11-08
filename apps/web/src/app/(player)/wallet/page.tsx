@@ -38,8 +38,15 @@ export default function WalletPage() {
           Transaction history
         </Link>
       </p>
+      <Link href="/bets" className="inline-flex min-h-11 items-center text-sm underline">
+        Full bet history and details →
+      </Link>
       <section>
-        <h2 className="mb-2 text-sm font-semibold">Demo bets in this session</h2>
+        <h2 className="mb-2 text-sm font-semibold">Recent demo bets</h2>
+        {bets.isLoading ? <LoadingSkeleton /> : null}
+        {bets.isError ? (
+          <ErrorState body="Bet history did not load." onRetry={() => void bets.refetch()} />
+        ) : null}
         {bets.data && bets.data.items.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No demo bets yet. The sportsbook slip is the only way to move a stake.
@@ -49,7 +56,12 @@ export default function WalletPage() {
             {bets.data?.items.map((bet) => (
               <li key={bet.id} className="px-3 py-3 text-sm">
                 <p className="font-medium">
-                  {bet.selectionName} · {bet.outcome === 'win' ? 'Demo win' : 'Demo loss'}
+                  {bet.selectionName} ·{' '}
+                  {bet.status === 'settled'
+                    ? bet.outcome === 'win'
+                      ? 'Demo win'
+                      : 'Demo loss'
+                    : bet.status}
                 </p>
                 <p className="text-muted-foreground">
                   {bet.eventName} · stake {formatFbu(bet.stakeMinor)} · return{' '}

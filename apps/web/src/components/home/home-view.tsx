@@ -36,19 +36,27 @@ export function HomeView() {
   const failed = [featuredGames, popular, live, promotions].find((query) => query.isError);
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
-        <div>
-          <p className="text-[11px] font-medium tracking-[0.16em] text-faint uppercase">Discover</p>
-          <h1 className="text-2xl font-semibold tracking-tight">FABLE</h1>
-          <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Casino previews and sports fixtures. Balances are simulated Fable demo units. No
-            real-money transactions.
+    <div className="home-editorial space-y-7">
+      <header className="editorial-hero">
+        <div className="hero-copy">
+          <p className="hero-eyebrow">SPORTSBOOK &amp; CASINO</p>
+          <h1 aria-label="FABLE">
+            A different
+            <br />
+            class of play.
+          </h1>
+          <p className="hero-intro">
+            Discover a considered collection of casino previews and sporting fixtures.
+          </p>
+          <Link href="/sports" className="hero-action">
+            Explore Sports <span aria-hidden>→</span>
+          </Link>
+          <p className="hero-disclosure">
+            Simulated Fable demo units. No real-money transactions.
+            <br />
+            Demo odds are not live prices.
           </p>
         </div>
-        <p className="rounded-md border border-border px-3 py-2 text-xs text-muted-foreground">
-          Demo odds are not live prices.
-        </p>
       </header>
 
       {failed ? (
@@ -60,16 +68,40 @@ export function HomeView() {
 
       <section>
         <SectionHeader
+          eyebrow="Casino"
+          title="Featured Casino Games"
+          action={
+            <Link href="/casino" className="text-sm underline">
+              View all games →
+            </Link>
+          }
+        />
+        {featuredGames.isLoading ? <LoadingSkeleton /> : null}
+        <GameGrid>
+          {featuredGames.data?.items.map((game) => (
+            <GameCard key={game.id} game={game} />
+          ))}
+        </GameGrid>
+      </section>
+
+      <section>
+        <SectionHeader
           eyebrow="Board"
-          title="Popular fixtures"
+          title="Sports fixtures"
           action={
             <Link href="/sports" className="text-sm underline">
               Sportsbook
             </Link>
           }
         />
+        {popular.data?.items.length === 0 ? (
+          <EmptyState
+            title="No fixtures available"
+            body="Please check back for the next demo board."
+          />
+        ) : null}
         {popular.isLoading ? <LoadingSkeleton rows={2} /> : null}
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="sports-rows grid gap-2">
           {popular.data?.items.map((event) => (
             <SportsEventCard key={event.id} event={event} />
           ))}
@@ -86,32 +118,15 @@ export function HomeView() {
             </Link>
           }
         />
+        {live.isLoading ? <LoadingSkeleton rows={2} /> : null}
         <p className="mb-3 text-xs text-faint">
           A label, not a broadcast. These clocks do not come from a feed.
         </p>
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="sports-rows grid gap-2">
           {live.data?.items.map((event) => (
             <SportsEventCard key={event.id} event={event} />
           ))}
         </div>
-      </section>
-
-      <section>
-        <SectionHeader
-          eyebrow="Casino"
-          title="Featured previews"
-          action={
-            <Link href="/casino" className="text-sm underline">
-              Lobby
-            </Link>
-          }
-        />
-        {featuredGames.isLoading ? <LoadingSkeleton /> : null}
-        <GameGrid>
-          {featuredGames.data?.items.map((game) => (
-            <GameCard key={game.id} game={game} />
-          ))}
-        </GameGrid>
       </section>
 
       <section>
