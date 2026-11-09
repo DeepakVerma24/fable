@@ -172,3 +172,11 @@ describe('module source boundaries', () => {
     expect(provider.mode).toBe('mock');
   });
 });
+
+it('replays equivalent journal lines independently of database row ordering', async () => {
+  const { ledger, audit } = ledgerWithAudit();
+  const first = await ledger.post(balanced);
+  const second = await ledger.post({ ...balanced, lines: [...balanced.lines].reverse() });
+  expect(second.id).toBe(first.id);
+  expect(audit.events).toHaveLength(1);
+});

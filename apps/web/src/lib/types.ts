@@ -16,7 +16,9 @@ export interface DemoGame {
   name: string;
   categories: string[];
   provider: string;
-  playable: false;
+  playable: boolean;
+  originalKind?: 'dice' | 'mines' | 'plinko' | 'limbo';
+  rules?: readonly string[];
   demo: true;
   summary: string;
   featured: boolean;
@@ -43,7 +45,10 @@ export interface DemoSelection {
 export interface DemoMarket {
   id: string;
   name: string;
-  selections: DemoSelection[];
+  selections: readonly DemoSelection[];
+  status?: 'open' | 'suspended' | 'closed' | 'unavailable';
+  group?: string;
+  unavailableReason?: string;
 }
 
 export interface DemoEvent {
@@ -51,18 +56,53 @@ export interface DemoEvent {
   sport: string;
   competition: string;
   name: string;
-  participants: [string, string];
+  participants: readonly [string, string];
+  /** Shown instead of a clock. These fixtures are not a live feed. */
   scheduleLabel: string;
-  phase: 'upcoming' | 'demo-live';
+  phase: 'upcoming' | 'demo-live' | 'completed';
+  scheduledAt?: string;
+  venue?: string;
+  result?: string;
+  cricket?: CricketMatch;
+  score?: { label: string; values: readonly [string, string]; detail: string };
   popular: boolean;
-  markets: DemoMarket[];
-  liveFeed?: false;
+  markets: readonly DemoMarket[];
 }
 
 export interface DemoSport {
   slug: string;
   name: string;
-  competitions: string[];
+  competitions: readonly string[];
+}
+
+export interface CricketInnings {
+  team: string;
+  runs: number;
+  wickets: number;
+  legalBalls: number;
+  batting?: readonly {
+    name: string;
+    runs: number;
+    balls: number;
+    fours: number;
+    sixes: number;
+    dismissal: string;
+  }[];
+  bowling?: readonly {
+    name: string;
+    legalBalls: number;
+    maidens: number;
+    runs: number;
+    wickets: number;
+  }[];
+}
+
+export interface CricketMatch {
+  format: 'T20' | 'ODI' | 'Test' | 'T10' | 'Other';
+  currentInnings?: number;
+  innings: readonly CricketInnings[];
+  target?: number;
+  inningsBallLimit?: number;
 }
 
 export interface DemoPromotion {
@@ -109,7 +149,9 @@ export interface DemoBet {
   payoutMinor: string;
   outcome: 'win' | 'loss';
   outcomeSource: 'deterministic-demo';
-  status: 'settled';
+  status: 'accepted' | 'settled' | 'cancelled' | 'refunded';
+  eventId: string;
+  selectionId: string;
   simulated: true;
   realMoney: false;
   note: string;

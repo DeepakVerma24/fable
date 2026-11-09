@@ -8,6 +8,86 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: casino_ci
+          POSTGRES_DB: fable_casino_ci
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U casino_ci -d fable_casino_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      FABLE_CASINO_TEST_URL: postgresql://casino_ci@127.0.0.1:5432/fable_casino_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ env.FABLE_CASINO_TEST_URL }}
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm test:casino:recovery
+      - run: pnpm --filter @fable/web exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+        env:
+          DATABASE_URL: ${{ env.FABLE_CASINO_TEST_URL }}
+      - uses: hashicorp/setup-terraform@v3
+      - name: Validate Terraform skeletons
+        run: |
+          set -eu
+          for env in dev test prod; do
+            terraform -chdir="infra/terraform/envs/${env}" init -backend=false -input=false
+            terraform -chdir="infra/terraform/envs/${env}" validate
+          done
+
+  financial-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: fable_test
+          POSTGRES_PASSWORD: local_ci_only
+          POSTGRES_DB: financial_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fable_test -d financial_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      FABLE_POSTGRES_TEST_URL: postgresql://fable_test:local_ci_only@127.0.0.1:5432/financial_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:packages
+      - run: pnpm --filter @fable/database test
+      - run: pnpm --filter @fable/api build
+      - run: node scripts/financial-api-integration.mjs
+
+  windows-portability:
+    runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -21,14 +101,3 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm build
-      - run: pnpm --filter @fable/web exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
-      - uses: hashicorp/setup-terraform@v3
-      - name: Validate Terraform skeletons
-        run: |
-          set -eu
-          for env in dev test prod; do
-            terraform -chdir="infra/terraform/envs/${env}" init -backend=false -input=false
-            terraform -chdir="infra/terraform/envs/${env}" validate
-          done

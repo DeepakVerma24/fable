@@ -1,29 +1,42 @@
+/** Original decorative artwork; all game names and controls remain HTML. */
 export function PreviewMark({ seed, label }: { seed: string; label: string }) {
-  const bits = hash(seed);
-  return (
-    <div className="relative aspect-[16/9] overflow-hidden bg-[#101318]" aria-hidden>
-      <div className="absolute inset-0 grid grid-cols-6 grid-rows-3 gap-1 p-3">
-        {Array.from({ length: 18 }, (_, index) => {
-          const on = ((bits >> (index % 24)) & 1) === 1;
-          return (
-            <span
-              key={index}
-              className="rounded-[2px]"
-              style={{ background: on ? '#F7F8FA' : '#2B3038' }}
-            />
-          );
-        })}
+  if (['paper-dice', 'fable-mines', 'fable-plinko', 'fable-limbo'].includes(seed)) {
+    const symbols: Record<string, string> = {
+      'paper-dice': '⚄',
+      'fable-mines': '◇',
+      'fable-plinko': '⠿',
+      'fable-limbo': '↗',
+    };
+    return (
+      <div
+        className="game-art original-art"
+        role={label ? 'img' : undefined}
+        aria-label={label || undefined}
+        aria-hidden={!label}
+      >
+        <span>{symbols[seed]}</span>
+        <small>FABLE ORIGINALS</small>
       </div>
-      <span className="sr-only">{label}</span>
-    </div>
-  );
-}
-
-function hash(seed: string): number {
-  let value = 2166136261;
-  for (const char of seed) {
-    value ^= char.charCodeAt(0);
-    value = Math.imul(value, 16777619);
+    );
   }
-  return value >>> 0;
+  const panel = seed.includes('roulette')
+    ? 2
+    : seed.includes('table')
+      ? 1
+      : seed.includes('northline')
+        ? 0
+        : 3;
+  return (
+    <div
+      className="game-art"
+      role={label ? 'img' : undefined}
+      aria-label={label || undefined}
+      aria-hidden={!label}
+      style={{
+        backgroundImage: "url('/art/fable-casino-art.png')",
+        backgroundSize: '400% 100%',
+        backgroundPosition: `${(panel * 100) / 3}% center`,
+      }}
+    />
+  );
 }

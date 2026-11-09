@@ -188,7 +188,7 @@ export class DemoSportsbook {
 
   reserve(input: DemoBetDraft): Promise<PostedJournal> {
     return this.sportsbook.requestSimulatedSettlement({
-      idempotencyKey: `bet-rsv-${input.idempotencyKey}`,
+      idempotencyKey: `bet-rsv-${input.userId}-${input.idempotencyKey}`,
       actorId: input.userId,
       lines: reservationLines(input.userId, input.stakeMinor),
     });
@@ -196,7 +196,7 @@ export class DemoSportsbook {
 
   settle(input: DemoBetDraft & { payoutMinor: bigint }): Promise<PostedJournal> {
     return this.sportsbook.requestSimulatedSettlement({
-      idempotencyKey: `bet-stl-${input.idempotencyKey}`,
+      idempotencyKey: `bet-stl-${input.userId}-${input.idempotencyKey}`,
       actorId: input.userId,
       lines: settlementLines(input.userId, input.stakeMinor, input.payoutMinor),
     });

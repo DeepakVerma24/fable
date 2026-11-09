@@ -1,3 +1,5 @@
+import { CRICKET_EVENTS, CRICKET_COMPETITIONS } from './cricket';
+
 export interface DemoSelection {
   id: string;
   name: string;
@@ -9,6 +11,9 @@ export interface DemoMarket {
   id: string;
   name: string;
   selections: readonly DemoSelection[];
+  status?: 'open' | 'suspended' | 'closed' | 'unavailable';
+  group?: string;
+  unavailableReason?: string;
 }
 
 export interface DemoEvent {
@@ -19,7 +24,12 @@ export interface DemoEvent {
   participants: readonly [string, string];
   /** Shown instead of a clock. These fixtures are not a live feed. */
   scheduleLabel: string;
-  phase: 'upcoming' | 'demo-live';
+  phase: 'upcoming' | 'demo-live' | 'completed';
+  scheduledAt?: string;
+  venue?: string;
+  result?: string;
+  cricket?: CricketMatch;
+  score?: { label: string; values: readonly [string, string]; detail: string };
   popular: boolean;
   markets: readonly DemoMarket[];
 }
@@ -30,7 +40,38 @@ export interface DemoSport {
   competitions: readonly string[];
 }
 
+export interface CricketInnings {
+  team: string;
+  runs: number;
+  wickets: number;
+  legalBalls: number;
+  batting?: readonly {
+    name: string;
+    runs: number;
+    balls: number;
+    fours: number;
+    sixes: number;
+    dismissal: string;
+  }[];
+  bowling?: readonly {
+    name: string;
+    legalBalls: number;
+    maidens: number;
+    runs: number;
+    wickets: number;
+  }[];
+}
+
+export interface CricketMatch {
+  format: 'T20' | 'ODI' | 'Test' | 'T10' | 'Other';
+  currentInnings?: number;
+  innings: readonly CricketInnings[];
+  target?: number;
+  inningsBallLimit?: number;
+}
+
 export const DEMO_SPORTS: readonly DemoSport[] = [
+  { slug: 'cricket', name: 'Cricket', competitions: CRICKET_COMPETITIONS },
   { slug: 'football', name: 'Football', competitions: ['Harbor Cup', 'Paper League'] },
   { slug: 'basketball', name: 'Basketball', competitions: ['Quiet Conference'] },
   { slug: 'tennis', name: 'Tennis', competitions: ['Indoor Series'] },
@@ -61,6 +102,11 @@ export const DEMO_EVENTS: readonly DemoEvent[] = [
     ],
   },
   {
+    score: {
+      label: 'Goals',
+      values: ['1', '1'],
+      detail: 'Simulated second half · frozen score snapshot',
+    },
     id: 'fbl-paper-city',
     sport: 'football',
     competition: 'Paper League',
@@ -98,6 +144,11 @@ export const DEMO_EVENTS: readonly DemoEvent[] = [
     ],
   },
   {
+    score: {
+      label: 'Points',
+      values: ['78', '74'],
+      detail: 'Simulated third quarter · frozen score snapshot',
+    },
     id: 'bsk-archive',
     sport: 'basketball',
     competition: 'Quiet Conference',
@@ -130,6 +181,11 @@ export const DEMO_EVENTS: readonly DemoEvent[] = [
     ],
   },
   {
+    score: {
+      label: 'Sets',
+      values: ['1', '0'],
+      detail: 'Simulated sets: 6–4, 3–2 · frozen score snapshot',
+    },
     id: 'ten-glass',
     sport: 'tennis',
     competition: 'Indoor Series',
@@ -178,6 +234,7 @@ export const DEMO_EVENTS: readonly DemoEvent[] = [
       ]),
     ],
   },
+  ...CRICKET_EVENTS,
 ];
 
 function market(
@@ -221,7 +278,9 @@ export function eventById(id: string): DemoEvent | null {
 
 export function quoteSelection(selectionId: string): QuotedSelection | null {
   for (const event of DEMO_EVENTS) {
+    if (event.phase === 'completed') continue;
     for (const marketRow of event.markets) {
+      if (marketRow.status && marketRow.status !== 'open') continue;
       const selection = marketRow.selections.find((item) => item.id === selectionId);
       if (selection) return { event, market: marketRow, selection };
     }

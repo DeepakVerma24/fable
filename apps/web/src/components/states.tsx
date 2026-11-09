@@ -20,7 +20,7 @@ export function SectionHeader({
             {eyebrow}
           </p>
         ) : null}
-        <h2 className="text-base font-semibold tracking-tight">{title}</h2>
+        <h2 className="section-heading">{title}</h2>
       </div>
       {action}
     </div>

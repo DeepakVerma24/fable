@@ -1,26 +1,14 @@
 'use client';
-
-import { Suspense, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-
+import Link from 'next/link';
+import { Suspense } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { GameCard, GameGrid } from '@/components/game-card';
-import { useSession } from '@/components/shell/use-session';
-import { EmptyState, ErrorState, LoadingSkeleton } from '@/components/states';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { api, ApiError } from '@/lib/api-client';
+import { EmptyState, ErrorState, LoadingSkeleton, SectionHeader } from '@/components/states';
+import { api } from '@/lib/api-client';
+import { useFavorites } from '@/lib/favorites';
+import { usePlayed } from '@/lib/played';
 import type { DemoGame, Page } from '@/lib/types';
-
-const categories = [
-  { slug: '', label: 'All' },
-  { slug: 'slots', label: 'Slots' },
-  { slug: 'live', label: 'Live Casino' },
-  { slug: 'table', label: 'Table Games' },
-  { slug: 'originals', label: 'Originals' },
-  { slug: 'new', label: 'New' },
-  { slug: 'popular', label: 'Popular' },
-];
 
 export function CasinoBrowser(props: { title: string; lockedCategory?: string }) {
   return (
@@ -29,135 +17,298 @@ export function CasinoBrowser(props: { title: string; lockedCategory?: string })
     </Suspense>
   );
 }
-
 function CasinoBrowserInner({ title, lockedCategory }: { title: string; lockedCategory?: string }) {
   const params = useSearchParams();
-  const fromQuery = params.get('category') ?? '';
-  const [category, setCategory] = useState<string | null>(null);
-  const queried = categories.some((item) => item.slug === fromQuery) ? fromQuery : '';
-  const activeCategory = lockedCategory ?? category ?? queried;
-  const [query, setQuery] = useState('');
-  const [provider, setProvider] = useState('');
-  const session = useSession();
-  const queryClient = useQueryClient();
+  const pathname = usePathname();
+  const favorites = useFavorites();
+  const played = usePlayed(favorites.playerId);
+  const category = lockedCategory ?? params.get('category') ?? '';
+  const query = params.get('q') ?? '';
+  const provider = params.get('provider') ?? '';
+  const availability = params.get('availability') ?? '';
+  const sort = params.get('sort') ?? 'featured';
+  const page = Math.max(1, Math.floor(Number(params.get('page')) || 1));
+  const categories = useQuery({
+    queryKey: ['casino-categories'],
+    queryFn: () => api<{ items: { slug: string; name: string }[] }>('/casino/categories'),
+  });
+  const providers = useQuery({
+    queryKey: ['casino-providers'],
+    queryFn: () => api<{ items: string[] }>('/casino/providers'),
+  });
   const games = useQuery({
-    queryKey: ['games', activeCategory, query, provider],
+    queryKey: ['casino-catalog', category, query, provider, availability, sort, page],
     queryFn: () => {
-      const params = new URLSearchParams({ pageSize: '24', sort: 'featured' });
-      if (activeCategory) params.set('category', activeCategory);
-      if (query.trim()) params.set('q', query.trim());
-      if (provider) params.set('provider', provider);
-      return api<Page<DemoGame>>(`/casino/games?${params.toString()}`);
+      const search = new URLSearchParams({ pageSize: '12', sort, page: String(page) });
+      if (category) search.set('category', category);
+      if (query.trim()) search.set('q', query.trim());
+      if (provider) search.set('provider', provider);
+      if (availability) search.set('availability', availability);
+      return api<Page<DemoGame>>(`/casino/games?${search}`);
     },
   });
-  const favorites = useQuery({
-    queryKey: ['favorites'],
-    enabled: Boolean(session.data?.player),
-    queryFn: () => api<{ items: DemoGame[] }>('/favorites'),
+  const editorial = useQuery({
+    queryKey: ['casino-editorial'],
+    queryFn: () => api<Page<DemoGame>>('/casino/games?pageSize=50&sort=featured'),
   });
-  const saved = useMemo(
-    () => new Set((favorites.data?.items ?? []).map((game) => game.id)),
-    [favorites.data],
-  );
-
-  async function toggleFavorite(gameId: string) {
-    if (!session.data?.player) return;
-    const method = saved.has(gameId) ? 'DELETE' : 'PUT';
-    try {
-      await api(`/favorites/${gameId}`, { method });
-      await queryClient.invalidateQueries({ queryKey: ['favorites'] });
-    } catch (error) {
-      if (error instanceof ApiError) return;
-      throw error;
-    }
+  function update(name: string, value: string) {
+    const next = new URLSearchParams(window.location.search);
+    if (value) next.set(name, value);
+    else next.delete(name);
+    if (name !== 'page') next.delete('page');
+    window.history.replaceState(null, '', `${pathname}?${next}`);
   }
-
+  const all = editorial.data?.items ?? [];
+  const hasFilters = Boolean(
+    category || query || provider || availability || sort !== 'featured' || page > 1,
+  );
+  const recent = played.flatMap((item) => {
+    const game = all.find((game) => game.id === item.gameId && game.playable);
+    return game ? [game] : [];
+  });
+  const cards = (items: DemoGame[]) => (
+    <GameGrid>
+      {items.map((game) => (
+        <GameCard
+          key={game.id}
+          game={game}
+          favorited={favorites.saved.has(game.id)}
+          favoritePending={
+            favorites.pending || favorites.query.isLoading || favorites.query.isError
+          }
+          onFavorite={favorites.playerId ? () => favorites.toggle(game.id) : undefined}
+        />
+      ))}
+    </GameGrid>
+  );
   return (
-    <div className="space-y-4">
-      <header>
-        <p className="text-[11px] font-medium tracking-[0.16em] text-faint uppercase">Casino</p>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-          Original previews from FABLE. They are not playable and they are not licensed games.
-        </p>
+    <div className="casino-lobby space-y-6">
+      <header className="casino-hero">
+        <div>
+          <p className="hero-eyebrow">THE FABLE COLLECTION</p>
+          <h1 className="section-heading">{title}</h1>
+          <p className="mt-3 max-w-lg text-sm text-muted-foreground">
+            A considered collection of original previews and playable practice games. Explore at
+            your own pace.
+          </p>
+          <p className="mt-3 max-w-lg text-xs text-faint">
+            FABLE Originals are nonfinancial simulations. No cash value, wallet settlement, external
+            providers or live dealers.
+          </p>
+          <Link href="/casino?category=originals&availability=playable" className="hero-action">
+            Explore Originals <span aria-hidden>→</span>
+          </Link>
+        </div>
+        <div
+          className="casino-hero-art"
+          role="img"
+          aria-label="Original emerald and champagne casino illustration"
+        />
       </header>
-      <div className="grid gap-3 md:grid-cols-[1fr_12rem]">
-        <div>
-          <Label htmlFor="game-search">Search previews</Label>
-          <Input
-            id="game-search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="mt-1 h-11"
-          />
-        </div>
-        <div>
-          <Label htmlFor="provider">Provider</Label>
-          <select
-            id="provider"
-            value={provider}
-            onChange={(event) => setProvider(event.target.value)}
-            className="mt-1 h-11 w-full rounded-md border border-border bg-background px-2 text-sm"
+      <nav aria-label="Casino categories" className="flex flex-wrap gap-2">
+        <Link
+          href="/casino"
+          className="sports-filter"
+          aria-current={!category ? 'page' : undefined}
+        >
+          All games
+        </Link>
+        {categories.data?.items.map((item) => (
+          <Link
+            key={item.slug}
+            href={`/casino?category=${item.slug}`}
+            className="sports-filter"
+            aria-current={category === item.slug ? 'page' : undefined}
           >
-            <option value="">All providers</option>
-            <option value="FABLE Preview">FABLE Preview</option>
-          </select>
-        </div>
-      </div>
-      {lockedCategory ? null : (
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Categories">
-          {categories.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              aria-pressed={activeCategory === item.slug}
-              className={`inline-flex h-11 items-center rounded-md border px-3 text-sm ${activeCategory === item.slug ? 'border-white bg-white text-primary-foreground' : 'border-border'}`}
-              onClick={() => setCategory(item.slug)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      )}
-      {games.isLoading ? <LoadingSkeleton /> : null}
-      {games.isError ? (
-        <ErrorState body="The catalog did not load." onRetry={() => void games.refetch()} />
-      ) : null}
-      {games.data && games.data.items.length === 0 ? (
-        <EmptyState title="No previews" body="Try another category or clear the search." />
-      ) : null}
-      <GameGrid>
-        {games.data?.items.map((game) => (
-          <GameCard
-            key={game.id}
-            game={game}
-            favorited={saved.has(game.id)}
-            onFavorite={session.data?.player ? () => void toggleFavorite(game.id) : undefined}
-          />
+            {item.name}
+          </Link>
         ))}
-      </GameGrid>
-      {session.data?.player && favorites.data ? (
-        <section>
-          <h2 className="mb-2 text-sm font-semibold">Recently saved</h2>
-          {favorites.data.items.length === 0 ? (
-            <EmptyState
-              title="No saved previews"
-              body="Use Save on a tile. Favorites stay with this session’s player record."
-            />
-          ) : (
-            <GameGrid>
-              {favorites.data.items.slice(0, 4).map((game) => (
-                <GameCard
-                  key={game.id}
-                  game={game}
-                  favorited
-                  onFavorite={() => void toggleFavorite(game.id)}
-                />
-              ))}
-            </GameGrid>
-          )}
+      </nav>
+      {categories.isError || providers.isError ? (
+        <ErrorState
+          body="Category or provider navigation did not load."
+          onRetry={() => {
+            void categories.refetch();
+            void providers.refetch();
+          }}
+        />
+      ) : null}
+      {!hasFilters && editorial.data ? (
+        <section aria-label="Featured games">
+          <SectionHeader eyebrow="Curated previews" title="Featured games" />
+          {cards(all.filter((game) => game.featured).slice(0, 4))}
         </section>
       ) : null}
+      <section aria-label="Game catalog" className="space-y-4">
+        <SectionHeader title={hasFilters ? 'Your selection' : 'Explore the collection'} />
+        <div className="sports-filters">
+          <label>
+            Search games
+            <input
+              type="search"
+              aria-label="Search games"
+              maxLength={80}
+              placeholder="Title or description"
+              value={query}
+              onChange={(e) => update('q', e.target.value)}
+            />
+          </label>
+          <label>
+            Provider
+            <select
+              aria-label="Provider"
+              value={provider}
+              onChange={(e) => update('provider', e.target.value)}
+            >
+              <option value="">All FABLE labels</option>
+              {providers.data?.items.map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Availability
+            <select
+              aria-label="Availability"
+              value={availability}
+              onChange={(e) => update('availability', e.target.value)}
+            >
+              <option value="">All games & previews</option>
+              <option value="playable">Playable nonfinancial demos</option>
+              <option value="preview">Preview only</option>
+            </select>
+          </label>
+          <label>
+            Sort games
+            <select
+              aria-label="Sort games"
+              value={sort}
+              onChange={(e) => update('sort', e.target.value)}
+            >
+              <option value="featured">Featured first</option>
+              <option value="popular">Most popular (catalog)</option>
+              <option value="name">Name A–Z</option>
+            </select>
+          </label>
+        </div>
+        {games.isLoading ? <LoadingSkeleton rows={4} /> : null}
+        {games.isError ? (
+          <ErrorState body="The catalog did not load." onRetry={() => void games.refetch()} />
+        ) : null}
+        {games.data ? (
+          <>
+            <p role="status" className="text-xs text-faint">
+              {games.data.total} titles found · Popularity is an editorial ranking, not live
+              activity.
+            </p>
+            {games.data.items.length ? (
+              cards(games.data.items)
+            ) : (
+              <EmptyState
+                title="No games found"
+                body="Try another category or clear the search and filters."
+              />
+            )}
+            <nav
+              aria-label="Catalog pages"
+              className="flex flex-wrap items-center justify-between gap-2"
+            >
+              <button
+                className="sports-filter"
+                disabled={page === 1}
+                onClick={() => update('page', String(page - 1))}
+              >
+                Previous
+              </button>
+              <span className="text-sm">
+                Page {page} of {Math.max(1, Math.ceil(games.data.total / 12))}
+              </span>
+              <button
+                className="sports-filter"
+                disabled={page * 12 >= games.data.total}
+                onClick={() => update('page', String(page + 1))}
+              >
+                Next
+              </button>
+            </nav>
+          </>
+        ) : null}
+      </section>
+      {favorites.error ? (
+        <p role="alert" className="text-sm text-danger">
+          Could not update favorites: {favorites.error}
+        </p>
+      ) : null}
+      {favorites.query.isError ? (
+        <ErrorState
+          body="Favorites could not be loaded."
+          onRetry={() => void favorites.query.refetch()}
+        />
+      ) : null}
+      {!hasFilters ? (
+        <>
+          <section aria-label="Popular games">
+            <SectionHeader title="Popular in the collection" eyebrow="Editorial selection" />
+            {editorial.isLoading ? (
+              <LoadingSkeleton />
+            ) : editorial.isError ? (
+              <ErrorState
+                body="The collection did not load."
+                onRetry={() => void editorial.refetch()}
+              />
+            ) : (
+              cards([...all].sort((a, b) => b.popularity - a.popularity).slice(0, 4))
+            )}
+          </section>
+          <section aria-label="FABLE Originals">
+            <SectionHeader title="FABLE Originals" eyebrow="Nonfinancial practice" />
+            {cards(all.filter((game) => game.playable))}
+          </section>
+        </>
+      ) : null}
+      <section aria-label="Recently played">
+        <SectionHeader title="Recently played" />
+        {recent.length ? (
+          cards(recent.slice(0, 4))
+        ) : (
+          <EmptyState
+            title="No games played yet"
+            body={
+              favorites.playerId
+                ? 'Complete or start a server-confirmed Original round. Viewing a preview does not count as playing.'
+                : 'Sign in and launch an Original. Played history is stored in this browser for your account.'
+            }
+          />
+        )}
+      </section>
+      {favorites.playerId ? (
+        <section aria-label="Saved games">
+          <SectionHeader
+            title="Your favorites"
+            action={
+              <Link className="text-sm underline" href="/favorites">
+                View all
+              </Link>
+            }
+          />
+          {favorites.query.isLoading ? (
+            <LoadingSkeleton />
+          ) : favorites.query.data?.items.length ? (
+            cards(favorites.query.data.items.slice(0, 4))
+          ) : (
+            <EmptyState
+              title="No saved games"
+              body="Save a title to keep it in your account favorites."
+            />
+          )}
+        </section>
+      ) : (
+        <p className="text-sm">
+          <Link className="underline" href="/login?next=/casino">
+            Sign in to save favorites
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

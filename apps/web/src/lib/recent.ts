@@ -17,7 +17,12 @@ let cached: RecentItem[] = empty;
 
 function read(): RecentItem[] {
   if (typeof window === 'undefined') return empty;
-  const raw = window.sessionStorage.getItem(KEY) ?? '[]';
+  let raw: string;
+  try {
+    raw = window.sessionStorage.getItem(KEY) ?? '[]';
+  } catch {
+    return empty;
+  }
   if (raw === cachedRaw) return cached;
   cachedRaw = raw;
   try {
@@ -35,7 +40,11 @@ function emit(): void {
 
 export function rememberRecent(item: RecentItem): void {
   const next = [item, ...read().filter((entry) => entry.id !== item.id)].slice(0, 6);
-  window.sessionStorage.setItem(KEY, JSON.stringify(next));
+  try {
+    window.sessionStorage.setItem(KEY, JSON.stringify(next));
+  } catch {
+    return;
+  }
   emit();
 }
 
